@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="da">
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="author" content="Jonas K. Sekamane">
+		
+		<title>Edacsac</title>
+		
+		<link rel="stylesheet" href="css/style.css">
+		<script src="js/d3.v3.min.js"></script>
+	</head>
+	
+	<body>
+		<header>Test project by <a href="http://jonas.sekamane.com">Jonas K. Sekamane</a></header>
+		<h1>Edacsac</h1>
+		
+		<style type='text/css'>
+			.chart circle.little {
+				fill: #aaa;
+				stroke: #666;
+				stroke-width: 1.5px;
+			}
+			.chart .data rect {
+				fill: #eee;
+				stroke: #ccc;
+			}
+			#presentation table {
+				width: 100%;
+				/*display: none;*/
+			}
+			#presentation table td {
+				border: 1px solid #eee;
+				padding: 4px;
+			}
+		</style>
+		
+		<script type='text/javascript'>
+			var parseDate = d3.time.format("%d. %b. %Y %H:%M").parse;
+		
+			// word count
+			// http://jsfiddle.net/deepumohanp/jZeKu/
+			var regex = /\s+/gi;
+			var wordCount = function(value) {
+				return value.trim().replace(regex, ' ').split(' ').length;
+			}
+			
+			
+			d3.json("crawler/comments-crawl.json", function(error, json) {
+				// Error handling
+				if (error) return console.warn(error);
+				
+				// Setting the date on which the article was published
+				articleDate = parseDate(json.articleDate);
+				
+				// Focusing on the comments
+				var comments = json.comments;
+
+				
+				/*****************************
+				***** TABLE PRESENTATION *****
+				******************************/
+				var table = d3.select("#presentation").append("table").attr("class","grid");
+
+				var thead = table.append("thead");
+				thead.append("th").text("num");
+				thead.append("th").text("page");
+				thead.append("th").text("post");
+				thead.append("th").text("image");
+				thead.append("th").text("user");
+				thead.append("th").text("rating");
+				thead.append("th").text("date");
+				thead.append("th").text("content");
+				thead.append("th").text("cites");
+
+				var tr = table.selectAll("tr")
+					.data(comments)
+					.enter().append("tr");
+				
+				var td = tr.selectAll("td")
+						.data(function(d) { return d3.entries(d); })
+						.enter().append("td")
+						.text(function(d) {
+							// Hiding image url and the comments since they break the layout of the table, because of their length
+							return (d.key == "image" || d.key == "contents") ? "#": d.value;
+						});
+					
+				/*
+				* return (parseDate(d) - articleDate) / 1000 / 60 / 60; // Hours since article published
+				* return wordCount(d);
+				* if (d) { return d.split(", ").length; } else { return "0"; } // Number of citations, rather than the list of citings
+				*/
+
+			
+				/*****************************
+				***** TIME LINE          *****
+				******************************/
+				// Time line: Hours after publication VS word count!
+				var margin = {top: 20, right: 20, bottom: 30, left: 50},
+				    width = 960 - margin.left - margin.right,
+				    height = 500 - margin.top - margin.bottom;
+
+				var x = d3.scale.linear()
+					.range([0, width]);
+
+				var y = d3.scale.linear()
+				    .range([height, 0]);
+
+				var xAxis = d3.svg.axis()
+				    .scale(x)
+				    .orient("bottom");
+
+				var yAxis = d3.svg.axis()
+				    .scale(y)
+				    .orient("left");
+
+				var svg = d3.select("#chart-2").append("svg")
+				    .attr("width", width + margin.left + margin.right)
+				    .attr("height", height + margin.top + margin.bottom);
+				
+				x.domain(d3.extent(comments, function(d) { return (parseDate(d.date) - articleDate) / 1000 / 60 / 60; }));
+				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
+				
+				var comment = svg.selectAll(".dot")
+					.data(comments)
+					.enter().append("circle")
+					.attr("class", "dot")
+					.attr("r", 3.5)
+					.attr("cx", function(d) { return x( (parseDate(d.date) - articleDate) / 1000 / 60 / 60); }) // Hours since article published)
+					.attr("cy", function(d) { return y( wordCount(d.contents)); });
+				
+			});
+
+		</script>
+		
+		<div class='chart' id='chart-1'>
+		</div>
+		<button id="button-1">Run</button>
+		
+		<div class='chart' id='chart-2'>
+		</div>
+		<button id="button-2">Run</button>
+		
+		<div id="presentation">
+		</div>
+		
+		<script type='text/javascript'>
+			/*
+			(function() {
+				var svg = d3.select("#chart-1").append("svg")
+				.attr("width", w)
+				.attr("height", h);
+
+				svg.selectAll(".little")
+				.data(data)
+				.enter().append("circle")
+				.attr("class", "little")
+				.attr("cx", x)
+				.attr("cy", y)
+				.attr("r", 12);
+
+				d3.select("#button-1").on("click", function() {
+					svg.selectAll(".select").remove();
+
+					svg.selectAll(".select")
+					.data(data)
+					.enter().append("circle")
+					.attr("class", "select")
+					.attr("cx", x)
+					.attr("cy", y)
+					.attr("r", 60)
+					.style("fill", "none")
+					.style("stroke", "red")
+					.style("stroke-opacity", 1e-6)
+					.style("stroke-width", 3)
+					.transition()
+					.duration(750)
+					.attr("r", 12)
+					.style("stroke-opacity", 1);
+				});
+			})();
+			*/
+		</script>
+		
+		<h2><a name="explanation" href="#explanation">#</a>Explanation</h2>
+		<p>...</p>
+		
+		<h2><a name="inspiration" href="#inspiration">#</a>Inspiration</h2>
+		<p>This project is inspired by The New York Times Company Research &amp; Development Lab's <a href="http://nytlabs.com/projects/cascade.html">Cascade project</a>.</p>
+		
+	</body>
+</html>
