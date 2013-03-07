@@ -34,6 +34,12 @@
 				border: 1px solid #eee;
 				padding: 4px;
 			}
+			
+			.domain { 
+			  fill: none; 
+			  stroke: black; 
+			  stroke-width; 1; 
+			}
 		</style>
 		
 		<script type='text/javascript'>
@@ -97,7 +103,7 @@
 				***** TIME LINE          *****
 				******************************/
 				// Time line: Hours after publication VS word count!
-				var margin = {top: 20, right: 20, bottom: 30, left: 50},
+				var margin = {top: 40, right: 15, bottom: 60, left: 60},
 				    width = 960 - margin.left - margin.right,
 				    height = 500 - margin.top - margin.bottom;
 
@@ -113,22 +119,95 @@
 
 				var yAxis = d3.svg.axis()
 				    .scale(y)
-				    .orient("left");
+				    .orient("left")
 
-				var svg = d3.select("#chart-2").append("svg")
+				var svg1 = d3.select("#chart-1").append("svg")
 				    .attr("width", width + margin.left + margin.right)
-				    .attr("height", height + margin.top + margin.bottom);
+				    .attr("height", height + margin.top + margin.bottom)
+					.append("g")
+					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+				
+				// draw the x axis
+				var xAxis = d3.svg.axis()
+					.scale(x)
+					.orient('bottom');
+				svg1.append('g')
+					.attr('transform', 'translate(0,' + height + ')')
+					.attr('class', 'main axis date')
+					.call(xAxis);
+
+				// draw the y axis
+				var yAxis = d3.svg.axis()
+					.scale(y)
+					.orient('left');
+				svg1.append('g')
+					.attr('transform', 'translate(0,0)')
+					.attr('class', 'main axis date')
+					.call(yAxis);
 				
 				x.domain(d3.extent(comments, function(d) { return (parseDate(d.date) - articleDate) / 1000 / 60 / 60; }));
 				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
 				
-				var comment = svg.selectAll(".dot")
+				var comment = svg1.selectAll(".dot")
 					.data(comments)
 					.enter().append("circle")
 					.attr("class", "dot")
 					.attr("r", 3.5)
-					.attr("cx", function(d) { return x( (parseDate(d.date) - articleDate) / 1000 / 60 / 60); }) // Hours since article published)
-					.attr("cy", function(d) { return y( wordCount(d.contents)); });
+					.attr("cx", function(d) { return x( (parseDate(d.date) - articleDate) / 1000 / 60 / 60 ); }) // Hours since article published)
+					.attr("cy", function(d) { return y( wordCount(d.contents) ); });
+				
+				
+				
+				
+				
+				
+				/*var x = d3.scale.ordinal()
+				    .rangeRoundBands([0, width], .1);
+				
+				x.domain(comments.map(function(d) { return (parseDate(d.date) - articleDate) / 1000 / 60 / 60; }));*/
+				x.domain([0, 55])
+				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
+			
+				var svg2 = d3.select("#chart-2").append("svg")
+				    .attr("width", width + margin.left + margin.right)
+				    .attr("height", height + margin.top + margin.bottom)
+					.append("g")
+					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+					
+				svg2.append("g")
+					.attr("class", "x axis")
+					.attr("transform", "translate(0," + height + ")")
+					.call(xAxis)
+					.append("text")
+						.attr("x", "50%")
+						.attr("dy", "3.71em")
+						.style("text-anchor", "middle")
+						.text("Hours after publication of the article");
+					
+				svg2.append("g")
+					.attr("class", "y axis")
+					.call(yAxis)
+					.append("text")
+						.attr("transform", "rotate(-90)")
+						.attr("y", 6)
+						.attr("dy", ".71em")
+						.style("text-anchor", "end")
+						.text("Word count");
+					
+				var comment = svg2.selectAll(".bar")
+					.data(comments)
+					.enter().append("rect")
+					.attr("class", "bar")
+					.attr("r", 3.5)
+					.attr('opacity', .3)
+					//.attr("x", function(d) { console.log(d.num); return d.num; })
+					//.attr("width", 2)
+					.attr("y", function(d) { return 0; })
+					//.attr("height", function(d) { return 10; });
+					.attr("x", function(d) { return x((parseDate(d.date) - articleDate) / 1000 / 60 / 60); }) // Hours since article published)
+					.attr("width", 4)
+					.attr("y", function(d) { return y(wordCount(d.contents)); })
+					.attr("height", function(d) { return (height - y(wordCount(d.contents))); });
 				
 			});
 
