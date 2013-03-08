@@ -92,14 +92,35 @@ aside {
 
 p {
   line-height: 1.5em;
+}
+body > p {
   width: 720px;
 }
 
-blockquote {
+
+body > blockquote {
   width: 640px;
 }
 
-li {
+blockquote {
+	border-left: solid 2px #ccc;
+	padding-left: 18px;
+	/*margin: 2em 0 2em -20px;*/
+}
+
+blockquote p {
+	font-style: italic;
+	font-family: Georgia, "Times New Roman", Serif;
+}
+
+blockquote cite {
+	font-style: normal;
+	font-family: "Helvetica Neue", Helvetica, sans-serif;
+	display: block;
+	text-align: right;
+}
+
+body > li {
   width: 680px;
 }
 
@@ -164,10 +185,20 @@ iframe {
 }
 
 /* */
+h1 { margin-bottom: .4em; }
+h1 em { color: #eee; }
+
+input.large { width: 60%; }
+input.large, button.large {
+	padding: .5em;
+	font-size: 100%;
+}
 
 .chart {
 	border: solid 1px #ddd;
 	box-shadow: 0 0 4px rgba(0,0,0,.2);
 	font: 10px sans-serif;
 	text-align: center;
+	clear: both;
+	margin: 20px 0 0;
 }
