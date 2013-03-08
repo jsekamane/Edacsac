@@ -15,7 +15,6 @@
 		<script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
 		<script type="text/javascript" src="js/jquery.tipsy.js"></script>
 		<script type='text/javascript' src='js/jquery.simplemodal.js'></script>
-		<script type='text/javascript' src='js/basic.js'></script>
 	</head>
 	
 	<body>
@@ -30,15 +29,7 @@
 		<p><strong>Newz.dk</strong>: <a href="http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page1#postcontainer">Anonymous tager afstand fra angreb på fagforeningen 3F’s hjemmeside</a></p>
 		
 		<style type='text/css'>
-			.chart circle.little {
-				fill: #aaa;
-				stroke: #666;
-				stroke-width: 1.5px;
-			}
-			.chart .data rect {
-				fill: #eee;
-				stroke: #ccc;
-			}
+			/* Table */
 			#presentation table {
 				width: 100%;
 				/*display: none;*/
@@ -48,10 +39,21 @@
 				padding: 4px;
 			}
 			
+			/* x- and y-axis */
 			.domain { 
 			  fill: none; 
 			  stroke: black; 
 			  stroke-width; 1; 
+			}
+			
+			/* Network */
+			.edge {
+				fill: none;
+				stroke: #666;
+				stroke-width: 1.5px;
+			}
+			path.link.resolved {
+			  stroke-dasharray: 0,2 1;
 			}
 		</style>
 		
@@ -87,17 +89,30 @@
 				var C = value.replace(/([.,?!-_])/g, '').match(/([^\s]{6,})/g, '').length;	// Number of long words (More than 6 letters)
 				//return B;
 				return A/B + (C * 100)/A;
-			}			
+			}
 			
+			// Loading data from multiple sources (currently only 1, therefore remaining = 1)
+			var jsonComments, jsonEdges, remaining = 1;
 			d3.json("crawler/comments-crawl.json", function(error, json) {
 				// Error handling
 				if (error) return console.warn(error);
+				jsonComments = json;
+				if (!--remaining) dataLoaded();
+			});
+			/*d3.json("crawler/tmplinks.json", function(error, json) {
+				// Error handling
+				if (error) return console.warn(error);
+				jsonEdges = json;
+				if (!--remaining) dataLoaded();
+			});*/
+
+			function dataLoaded() {
 				
 				// Setting the date on which the article was published
-				articleDate = parseDate(json.articleDate);
+				articleDate = parseDate(jsonComments.articleDate);
 				
 				// Focusing on the comments
-				var comments = json.comments;
+				var comments = jsonComments.comments;
 
 				
 				/*****************************
@@ -138,7 +153,17 @@
 				/*****************************
 				***** TIME LINE          *****
 				******************************/
-				// Time line: Hours after publication VS word count!
+				
+				// Custom color scale, where "Neutral" is predefined
+				d3.scale.category10custom = function() {
+					return d3.scale.ordinal().range(d3_category10custom);
+				};
+				var d3_category10custom = [ "#aaa", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
+				var color = d3.scale.category10custom();
+				var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
+				
+				
+				// Time line: Hours after publication VS lix!
 				var margin = {top: 40, right: 15, bottom: 60, left: 60},
 				    width = 960 - margin.left - margin.right,
 				    height = 500 - margin.top - margin.bottom;
@@ -156,14 +181,6 @@
 				var yAxis = d3.svg.axis()
 				    .scale(y)
 				    .orient("left");
-				
-				// Custom color scale, where "Neutral" is predefined
-				d3.scale.category10custom = function() {
-					return d3.scale.ordinal().range(d3_category10custom);
-				};
-				var d3_category10custom = [ "#cccccc", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
-				var color = d3.scale.category10custom();
-				var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
 
 				var svg1 = d3.select("#chart-1").append("svg")
 				    .attr("width", width + margin.left + margin.right)
@@ -233,13 +250,20 @@
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
 				
+				// TOOL TIP
+				$('svg .dot').tipsy({ 
+				    gravity: 'w',    // gravity
+				    html: true,     // is tooltip content HTML?
+				    offset: -30,       // pixel offset of tooltip from element
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.num+"</strong> "+d.user;
+					}
+				});
+			
+			
 				
-				
-				
-				/*var x = d3.scale.ordinal()
-				    .rangeRoundBands([0, width], .1);
-				
-				x.domain(comments.map(function(d) { return (parseDate(d.date) - articleDate) / 1000 / 60 / 60; }));*/
+				/* Bar chart */
 				x.domain([0, 55])
 				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
 			
@@ -275,10 +299,7 @@
 					.attr("class", "bar")
 					.attr("r", 3.5)
 					.attr('opacity', .5)
-					//.attr("x", function(d) { console.log(d.num); return d.num; })
-					//.attr("width", 2)
 					.attr("y", function(d) { return 0; })
-					//.attr("height", function(d) { return 10; });
 					.attr("x", function(d) { return x((parseDate(d.date) - articleDate) / 1000 / 60 / 60); }) // Hours since article published)
 					.attr("width", 4)
 					.attr("y", function(d) { return y(wordCount(d.contents)); })
@@ -304,8 +325,7 @@
 					.attr("dy", ".35em")
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
-				
-				
+					
 				// TOOL TIP
 				$('svg .bar').tipsy({ 
 				    gravity: 'w',    // gravity
@@ -316,8 +336,87 @@
 						return "<strong>#"+d.num+"</strong> "+d.user;
 					}
 				});
+
+
 				
-				$('svg .dot').tipsy({ 
+				// Compute the distinct links from the nodes/comments.
+				function link(source, target, value) {
+					this.source = source;
+					this.target = target;
+					this.value = value;
+				}
+				var links = []
+				comments.forEach(function(d) {
+					n = Math.floor(d.num);
+					d.cites.split(", ").forEach(function(d) {
+						if(d && d != 0) { // ignore the empty and the comments refering to the article, e.g. #0.
+							links.push( new link(n-1, Math.floor(d)-1, 1) ); // Create unweieghted set of links
+						}
+					});	
+				});
+				
+				
+				/* Graph / Network */	
+				var force = d3.layout.force()
+					.nodes(comments)
+					.links(links)
+					.size([width, height])
+					.linkDistance(60)
+					.charge(-150)
+					.on("tick", tick)
+					.start();
+
+				var svg = d3.select("#chart-3").append("svg:svg")
+					.attr("width", width)
+					.attr("height", height);
+
+				// Per-type markers, as they don't inherit styles.
+				svg.append("svg:defs").selectAll("marker")
+					.data(["EndMarker"])
+					.enter().append("svg:marker")
+						.attr("id", String)
+						.attr("viewBox", "0 -5 10 10")
+						.attr("refX", 15)
+						.attr("refY", -1.5)
+						.attr("markerWidth", 6)
+						.attr("markerHeight", 6)
+						.attr("orient", "auto")
+						.append("svg:path")
+							.attr("d", "M0,-5L10,0L0,5");
+
+				var edge = svg.append("svg:g").selectAll(".edge")
+					.data(force.links())
+					.enter().append("svg:path")
+						.attr("class", "edge")
+						.attr("marker-end", "url(#EndMarker)");
+
+				var node = svg.append("svg:g").selectAll(".node")
+					.data(force.nodes())
+					.enter().append("svg:circle")
+						.attr("class", "node")
+						.attr("r", 6)
+						.style("fill", function(d) { return color(d.rating); })
+						.call(force.drag)
+						.on("click", function(d){
+							$.modal("<h4>#"+d.num+": "+d.user+"</h4>"+d.contents, {closeHTML: "", overlayClose: true});
+						});
+
+				// Use elliptical arc path segments to doubly-encode directionality.
+				function tick() {
+					edge.attr("d", function(d) {
+						var dx = d.target.x - d.source.x,
+						dy = d.target.y - d.source.y,
+						dr = Math.sqrt(dx * dx + dy * dy);
+						return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+					});
+
+					node.attr("transform", function(d) {
+						return "translate(" + d.x + "," + d.y + ")";
+					});
+				}
+				
+				// TOOL TIP
+				$('svg .node').tipsy({ 
 				    gravity: 'w',    // gravity
 				    html: true,     // is tooltip content HTML?
 				    offset: -30,       // pixel offset of tooltip from element
@@ -327,8 +426,9 @@
 					}
 				});
 				
-				
-			});
+
+
+			}
 
 		</script>
 		
@@ -339,44 +439,6 @@
 		<div class='chart' id='chart-2'></div>
 		
 		<div class="chart" id="presentation"></div>
-		
-		<script type='text/javascript'>
-			/*
-			(function() {
-				var svg = d3.select("#chart-1").append("svg")
-				.attr("width", w)
-				.attr("height", h);
-
-				svg.selectAll(".little")
-				.data(data)
-				.enter().append("circle")
-				.attr("class", "little")
-				.attr("cx", x)
-				.attr("cy", y)
-				.attr("r", 12);
-
-				d3.select("#button-1").on("click", function() {
-					svg.selectAll(".select").remove();
-
-					svg.selectAll(".select")
-					.data(data)
-					.enter().append("circle")
-					.attr("class", "select")
-					.attr("cx", x)
-					.attr("cy", y)
-					.attr("r", 60)
-					.style("fill", "none")
-					.style("stroke", "red")
-					.style("stroke-opacity", 1e-6)
-					.style("stroke-width", 3)
-					.transition()
-					.duration(750)
-					.attr("r", 12)
-					.style("stroke-opacity", 1);
-				});
-			})();
-			*/
-		</script>
 		
 		<h2><a name="explanation" href="#explanation">#</a>Explanation</h2>
 		<p>...</p>
