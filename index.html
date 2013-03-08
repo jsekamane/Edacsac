@@ -51,10 +51,12 @@
 				fill: none;
 				stroke: #666;
 				stroke-width: 1.5px;
+				opacity: 0.2;
 			}
 			path.link.resolved {
 			  stroke-dasharray: 0,2 1;
 			}
+			
 		</style>
 		
 		<script type='text/javascript'>
@@ -158,7 +160,7 @@
 				d3.scale.category10custom = function() {
 					return d3.scale.ordinal().range(d3_category10custom);
 				};
-				var d3_category10custom = [ "#aaa", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
+				var d3_category10custom = [ "#888", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
 				var color = d3.scale.category10custom();
 				var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
 				
@@ -356,13 +358,14 @@
 				});
 				
 				
-				/* Graph / Network */	
+				/* Graph / Network */
+				var basicTick = true;
 				var force = d3.layout.force()
 					.nodes(comments)
 					.links(links)
 					.size([width, height])
-					.linkDistance(60)
-					.charge(-150)
+					.linkDistance(30)
+					.charge(-70)
 					.on("tick", tick)
 					.start();
 
@@ -378,8 +381,8 @@
 						.attr("viewBox", "0 -5 10 10")
 						.attr("refX", 15)
 						.attr("refY", -1.5)
-						.attr("markerWidth", 6)
-						.attr("markerHeight", 6)
+						.attr("markerWidth", 5)
+						.attr("markerHeight", 5)
 						.attr("orient", "auto")
 						.append("svg:path")
 							.attr("d", "M0,-5L10,0L0,5");
@@ -403,16 +406,35 @@
 
 				// Use elliptical arc path segments to doubly-encode directionality.
 				function tick() {
-					edge.attr("d", function(d) {
-						var dx = d.target.x - d.source.x,
-						dy = d.target.y - d.source.y,
-						dr = Math.sqrt(dx * dx + dy * dy);
-						return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
-					});
+					//console.log("How often is this called?")
+					
+					if(basicTick){
+						edge.attr("d", function(d) {
+							var dx = d.target.x - d.source.x,
+							dy = d.target.y - d.source.y,
+							dr = Math.sqrt(dx * dx + dy * dy);
+							return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+						});
 
-					node.attr("transform", function(d) {
-						return "translate(" + d.x + "," + d.y + ")";
-					});
+						node.attr("transform", function(d) {
+							return "translate(" + d.x + "," + d.y + ")";
+						});
+					} else {
+						edge.attr("d", function(d) {
+							//var dx = d.target.x - d.source.x,
+							var dx = d.target.x - d.source.x,
+							dy = d.target.y - d.source.y,
+							//dr = Math.sqrt(dx * dx + dy * dy);
+							dr = 0;
+							return "M" + x((parseDate(d.source.date) - articleDate) / 1000 / 60 / 60) + "," + y(d.source.cites.split(", ").length*200) + "A" + dr + "," + dr + " 0 0,1 " + x((parseDate(d.target.date) - articleDate) / 1000 / 60 / 60) + "," + y(d.target.cites.split(", ").length*200);
+						});
+						
+						node.attr("transform", function(d) {
+							//return "translate(" + d.x + "," + d.y + ")";
+							return "translate(" + x((parseDate(d.date) - articleDate) / 1000 / 60 / 60) + "," + y(d.cites.split(", ").length*200) + ")";
+						});
+						force.stop();
+					}
 				}
 				
 				// TOOL TIP
@@ -426,6 +448,45 @@
 					}
 				});
 				
+				
+				d3.select("#btn3-pause").on("click", function() { force.stop(); });
+				d3.select("#btn3-continue").on("click", function() { force.resume(); basicTick = true; });
+				
+				d3.select("#btn3-1").on("click", function() {
+					force.stop();
+										
+					d3.select(node[0][70])
+						.transition()
+							.duration(750)
+							.style("stroke", "red")
+					        .style("stroke-opacity", 1e-6)
+					        .style("stroke-width", 60)
+							.transition()
+								.duration(750)
+								.style("stroke-opacity", 1)
+								.style("stroke-width", 0)
+				});
+
+				d3.select("#btn3-2").on("click", function() {
+				//	force.stop();
+
+					//console.log(d3.select(node))
+					//console.log(d3.selectAll(node[0]));
+					//node.transition().duration(500).delay(500).attr("cy", 90);
+				/*	d3.selectAll(node[0]).transition().duration(500)
+						//.attr("cy", 90)
+						.style("stroke", "red")
+				        .style("stroke-opacity", 1e-6)
+				        .style("stroke-width", 60)
+						.transition()
+							.duration(0)
+							.style("stroke-opacity", 1)
+							.style("stroke-width", 0)
+				*/
+					basicTick = false;
+				});
+				
+				
 
 
 			}
@@ -433,6 +494,10 @@
 		</script>
 		
 		<div class='chart' id='chart-3'></div>
+		<button id="btn3-pause">Pause</button>
+		<button id="btn3-continue">Continue</button>
+		<button id="btn3-1">Surprise me</button>
+		<button id="btn3-2">Boom goes the dynamite!</button>
 		
 		<div class='chart' id='chart-1'></div>
 		
