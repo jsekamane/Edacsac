@@ -205,3 +205,5 @@ input.large, button.large {
 	clear: both;
 	margin: 20px 0 0;
 }
+fieldset { display: inline; background: #efefef; padding: 0 6px; }
+fieldset label { font-size: 80%; }

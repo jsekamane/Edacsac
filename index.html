@@ -526,20 +526,53 @@
 					$("#btn3-2").removeAttr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
 				});
 			
-				d3.select("#btn3-1").on("click", function() {
-					force.stop();
-									
-					d3.select(node[0][70])
-						.transition()
-							.duration(750)
-							.style("stroke", "red")
-					        .style("stroke-opacity", 1e-6)
-					        .style("stroke-width", 60)
-							.transition()
-								.duration(750)
-								.style("stroke-opacity", 1)
-								.style("stroke-width", 0)
+			
+				/* Count the number of comments per user and sort the list */
+				// http://stackoverflow.com/a/10541220/1053612
+				counter = {}
+				comments.forEach(function(d){
+					var key = JSON.stringify(d.user)
+				    counter[key] = (counter[key] || 0) + 1
 				});
+				// http://stackoverflow.com/a/13758701/1053612
+				var countersort = []; // First create the array of keys/net_total so that we can sort it
+				for (var key in counter) { countersort.push({key:key,count:counter[key]}); }
+				countersort.sort(function(x,y){return y.count - x.count}); // Now sort it
+				
+				/* Add a select from which users can be picked */
+				var selector = d3.select("#fs3-1")
+					.append("select")
+					.attr("id", "s3-1")
+					.on("change", function(){
+						/* make log of objects/nodes belong to that user */
+						u = this.value;
+						ulog = new Array();
+						comments.forEach(function(d){
+							if(u == d.user) ulog.push(node[0][d.num-1]);
+							// http://stackoverflow.com/a/10541220/1053612
+							var key = JSON.stringify(d.user)
+						    counter[key] = (counter[key] || 0) + 1
+						});
+						// animation
+						d3.selectAll(ulog)
+							.transition()
+								.duration(350)
+								.style("stroke", "red")
+						        .style("stroke-opacity", 1e-6)
+						        .style("stroke-width", 60)
+								.transition()
+									.duration(750)
+									.style("stroke-opacity", 1)
+									.style("stroke-width", 0);
+
+					})
+				selector.selectAll("option")
+					.data(countersort)
+					.enter().append("option")
+					.attr("value", function(d){ return d.key.substring(1,d.key.length-1); })
+					.text(function(d){ return d.key.substring(1,d.key.length-1) + " ("+d.count+")"; })
+				selector.append("option").attr("selected","selected").text(" ");
+
 
 				d3.select("#btn3-2").on("click", function() {
 					basicTick = false;
@@ -557,8 +590,9 @@
 		<div class='chart' id='chart-3'></div>
 		<button id="btn3-pause">Pause</button>
 		<button id="btn3-continue">Continue</button>
-		<button id="btn3-1">Surprise me</button>
+		<fieldset id="fs3-1"><label>Full disclosure:</label> </fieldset>
 		<button id="btn3-2">Boom goes the dynamite!</button>
+		<button id="btn3-3">Round round – get around</button>
 	
 		<div class='chart' id='chart-1'></div>
 	
