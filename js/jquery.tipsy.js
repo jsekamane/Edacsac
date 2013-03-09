@@ -161,6 +161,26 @@
             }
         };
         
+        function move(event) {
+			var tipsy = get(this);
+			tipsy.hoverState = 'in';
+			if (options.follow == 'x') {
+				var arrow = $(tipsy.$tip).children('.tipsy-arrow');
+				if (/^[^w]w$/.test(options.gravity) && arrow.position() != null) {
+					var x = event.pageX - ($(arrow).position().left+($(arrow).outerWidth()/2)) + options.offset;
+				} else if (/^[^e]e$/.test(options.gravity) && arrow.position() != null) {
+					var x = event.pageX - ($(arrow).position().left+($(arrow).outerWidth()/2)) + options.offset;
+				} else {
+					var x = event.pageX - ($(tipsy.$tip).outerWidth()/2) + options.offset;
+				}
+				$(tipsy.$tip).css('left', x);
+			} else if (options.follow == 'y') {
+				if (/^w|^e/.test(options.gravity) ) {
+					$(tipsy.$tip).css('top', event.pageY-($(tipsy.$tip).outerHeight()/2 + options.offset));
+				}
+			}
+        }
+
         function leave() {
             var tipsy = get(this);
             tipsy.hoverState = 'out';
@@ -176,8 +196,9 @@
         if (options.trigger != 'manual') {
             var binder   = options.live ? 'live' : 'bind',
                 eventIn  = options.trigger == 'hover' ? 'mouseenter' : 'focus',
-                eventOut = options.trigger == 'hover' ? 'mouseleave' : 'blur';
-            this[binder](eventIn, enter)[binder](eventOut, leave);
+                eventOut = options.trigger == 'hover' ? 'mouseleave' : 'blur',
+				eventMove = 'mousemove';
+            this[binder](eventIn, enter)[binder](eventOut, leave)[binder](eventMove, move);
         }
         
         return this;
@@ -196,7 +217,8 @@
         offset: 0,
         opacity: 0.8,
         title: 'title',
-        trigger: 'hover'
+        trigger: 'hover',
+		follow: false
     };
     
     $.fn.tipsy.revalidate = function() {
