@@ -18,34 +18,41 @@
 	</head>
 	
 	<body>
+	<div class="main">
 		
 		<header>Test project by <a href="http://jonas.sekamane.com">Jonas K. Sekamane</a></header>
-		
+	
 		<h1>Edacsac <em>Visualizing Discussions</em></h1>
-
-		<input class="large" type="url" value="http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page1#postcontaine">
-		<button class="large" id="button-1">&rarr;</button>
-		
+	
+		<form id="form">
+			<input type="url" class="large" value="http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page1#postcontaine">
+			<button type="submit" class="large" id="button-1">&rarr;</button>
+		</form>
+		<script type='text/javascript'>
+			$("#form").submit(function() {
+				$.modal('<h1>Sorry to let you down!</h1><p>I\'d love it too, if this page was able to automatically crawl any webpage and visualize the discussion right here, for your and my viewing pleasure. Heck I\'d even be satisfied, if the page was able to do so for discussions found at <a href="http://newz.dk">newz.dk</a>. But I am sorry to let you down; <em>this form has no functionality...</em></p><p><strong>You are however welcome to <a href="https://github.com/jsekamane">Fork me on GitHub</a></strong> and add this functionality. I\'ll through in the script (Python), that I used to crawl for data and that exports the data to JSON – no extra charge. Well <a href="http://creativecommons.org/licenses/by/3.0/">CC Attribution 3.0 Unported</a>, so no charge. Go nuts!</p>', {closeHTML: "", overlayClose: true});
+				return false;
+			});
+		</script>
+	
 		<p><strong>Newz.dk</strong>: <a href="http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page1#postcontainer">Anonymous tager afstand fra angreb på fagforeningen 3F’s hjemmeside</a></p>
-		
+	
 		<style type='text/css'>
 			/* Table */
-			#presentation table {
-				width: 100%;
-				/*display: none;*/
-			}
+			#presentation { display: none; }
+			#presentation table { width: 100%; }
 			#presentation table td, #presentation table th  {
 				border: 1px solid #eee;
 				padding: 4px;
 			}
-			
+		
 			/* x- and y-axis */
 			.domain { 
 			  fill: none; 
 			  stroke: black; 
 			  stroke-width; 1; 
 			}
-			
+		
 			/* Network */
 			.edge {
 				fill: none;
@@ -56,12 +63,12 @@
 			path.link.resolved {
 			  stroke-dasharray: 0,2 1;
 			}
-			
-		</style>
 		
+		</style>
+	
 		<script type='text/javascript'>
 			var parseDate = d3.time.format("%d. %b. %Y %H:%M").parse;
-		
+	
 			// http://stackoverflow.com/a/822486/1053612
 			function strip(html)
 			{
@@ -69,7 +76,7 @@
 			   tmp.innerHTML = html;
 			   return tmp.textContent||tmp.innerText;
 			}
-		
+	
 			// word count
 			// http://jsfiddle.net/deepumohanp/jZeKu/
 			var regex = /\s+/gi;
@@ -92,7 +99,12 @@
 				//return B;
 				return A/B + (C * 100)/A;
 			}
-			
+		
+			// Present comment
+			var present  = function(d) {
+				$.modal("<h4><a href='http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page"+d.page+"#"+d.post+"'>#"+d.num+": "+d.user+"</a></h4>"+d.contents, {closeHTML: "", overlayClose: true});
+			}
+		
 			// Loading data from multiple sources (currently only 1, therefore remaining = 1)
 			var jsonComments, jsonEdges, remaining = 1;
 			d3.json("crawler/comments-crawl.json", function(error, json) {
@@ -109,10 +121,10 @@
 			});*/
 
 			function dataLoaded() {
-				
+			
 				// Setting the date on which the article was published
 				articleDate = parseDate(jsonComments.articleDate);
-				
+			
 				// hours since article date
 				var since = function(date) {
 					return (date - articleDate) / 1000 / 60 / 60;
@@ -121,11 +133,11 @@
 				var citations = function(cites) {
 					return (cites.split(", ")[0] != "") ? cites.split(", ").length : 0 ; // if empty array then 0 citations.
 				}
-				
+			
 				// Focusing on the comments
 				var comments = jsonComments.comments;
 
-				
+			
 				/*****************************
 				***** TABLE PRESENTATION *****
 				******************************/
@@ -145,7 +157,7 @@
 				var tr = table.selectAll("tr")
 					.data(comments)
 					.enter().append("tr");
-				
+			
 				var td = tr.selectAll("td")
 						.data(function(d) { return d3.entries(d); })
 						.enter().append("td")
@@ -153,18 +165,18 @@
 							// Hiding image url and the comments since they break the layout of the table, because of their length
 							return (d.key == "image" || d.key == "contents") ? "#": d.value;
 						});
-					
+				
 				/*
 				* return (parseDate(d) - articleDate) / 1000 / 60 / 60; // Hours since article published
 				* return wordCount(d);
 				* if (d) { return d.split(", ").length; } else { return "0"; } // Number of citations, rather than the list of citings
 				*/
 
-			
+		
 				/*****************************
 				***** TIME LINE          *****
 				******************************/
-				
+			
 				// Custom color scale, where "Neutral" is predefined
 				d3.scale.category10custom = function() {
 					return d3.scale.ordinal().range(d3_category10custom);
@@ -172,8 +184,8 @@
 				var d3_category10custom = [ "#888", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
 				var color = d3.scale.category10custom();
 				var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
-				
-				
+			
+			
 				// Time line: Hours after publication VS lix!
 				var margin = {top: 40, right: 15, bottom: 60, left: 60},
 				    width = 960 - margin.left - margin.right,
@@ -198,12 +210,12 @@
 				    .attr("height", height + margin.top + margin.bottom)
 					.append("g")
 					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-				
+			
 				// draw the x axis
 				var xAxis = d3.svg.axis()
 					.scale(x)
 					.orient('bottom');
-					
+				
 				svg1.append('g')
 					.attr("class", "x axis")
 					.attr("transform", "translate(0," + height + ")")
@@ -218,7 +230,7 @@
 				var yAxis = d3.svg.axis()
 					.scale(y)
 					.orient('left');
-					
+				
 				svg1.append('g')
 					.attr("class", "y axis")
 					.call(yAxis)
@@ -228,10 +240,10 @@
 						.attr("dy", "-4.71em")
 						.style("text-anchor", "end")
 						.text("LIX, indicating the difficulty of reading a text");
-				
+			
 				x.domain(d3.extent(comments, function(d) { return since(parseDate(d.date)); }));
 				y.domain([0, d3.max(comments, function(d) { return lixCount(d.contents); })]);
-				
+			
 				var comment = svg1.selectAll(".dot")
 					.data(comments)
 					.enter().append("circle")
@@ -241,7 +253,7 @@
 					.attr("cy", function(d) { return y( lixCount(d.contents) ); })
 					.style("fill", function(d) { return color(d.rating); })
 					.on("click", function(d){
-						$.modal("<h4>#"+d.num+": "+d.user+"</h4>"+d.contents, {closeHTML: "", overlayClose: true});
+						present(d);
 					});
 
 				var legend = svg1.selectAll(".legend")
@@ -260,30 +272,30 @@
 					.attr("dy", ".35em")
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
-				
+			
 				// TOOL TIP
 				$('svg .dot').tipsy({ 
 				    gravity: 'w',    // gravity
 				    html: true,     // is tooltip content HTML?
-				    offset: -30,       // pixel offset of tooltip from element
+				    offset: 10,       // pixel offset of tooltip from element
 					title: function() {
 						var d = this.__data__;
 						return "<strong>#"+d.num+"</strong> "+d.user;
 					}
 				});
+		
+		
 			
-			
-				
 				/* Bar chart */
 				x.domain([0, 55])
 				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
-			
+		
 				var svg2 = d3.select("#chart-2").append("svg")
 				    .attr("width", width + margin.left + margin.right)
 				    .attr("height", height + margin.top + margin.bottom)
 					.append("g")
 					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-					
+				
 				svg2.append("g")
 					.attr("class", "x axis")
 					.attr("transform", "translate(0," + height + ")")
@@ -293,7 +305,7 @@
 						.attr("dy", "3.71em")
 						.style("text-anchor", "middle")
 						.text("Hours after publication of the article");
-					
+				
 				svg2.append("g")
 					.attr("class", "y axis")
 					.call(yAxis)
@@ -303,7 +315,7 @@
 						.attr("dy", ".71em")
 						.style("text-anchor", "end")
 						.text("Word count");
-					
+				
 				var comment = svg2.selectAll(".bar")
 					.data(comments)
 					.enter().append("rect")
@@ -313,13 +325,13 @@
 					.attr("y", function(d) { return 0; })
 					.attr("x", function(d) { return x( since(parseDate(d.date)) ); }) // Hours since article published)
 					.attr("width", 4)
-					.attr("y", function(d) { return y(wordCount(d.contents)); })
-					.attr("height", function(d) { return (height - y(wordCount(d.contents))); })
+					.attr("y", function(d) { return y(wordCount(d.contents)+8); })
+					.attr("height", function(d) { return (height - y(wordCount(d.contents))+8); })
 					.style("fill", function(d) { return color(d.rating); })
 					.on("click", function(d){
-						$.modal("<h4>#"+d.num+": "+d.user+"</h4>"+d.contents, {closeHTML: "", overlayClose: true});
+						present(d);
 					});
-				
+			
 				var legend = svg2.selectAll(".legend")
 					.data(color.domain())
 					.enter().append("g")
@@ -336,12 +348,12 @@
 					.attr("dy", ".35em")
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
-					
+				
 				// TOOL TIP
 				$('svg .bar').tipsy({ 
 				    gravity: 'w',    // gravity
 				    html: true,     // is tooltip content HTML?
-				    offset: -30,       // pixel offset of tooltip from element
+				    offset: 2,       // pixel offset of tooltip from element
 					title: function() {
 						var d = this.__data__;
 						return "<strong>#"+d.num+"</strong> "+d.user;
@@ -349,7 +361,7 @@
 				});
 
 
-				
+			
 				// Compute the distinct links from the nodes/comments.
 				function link(source, target, value) {
 					this.source = source;
@@ -365,8 +377,8 @@
 						}
 					});	
 				});
-				
-				
+			
+			
 				/* Graph / Network */
 				var basicTick = true;
 				var force = d3.layout.force()
@@ -406,17 +418,19 @@
 					.data(force.nodes())
 					.enter().append("svg:circle")
 						.attr("class", "node")
-						.attr("r", 6)
+						.attr("r", 8)
 						.style("fill", function(d) { return color(d.rating); })
 						.call(force.drag)
 						.on("click", function(d){
-							$.modal("<h4>#"+d.num+": "+d.user+"</h4>"+d.contents, {closeHTML: "", overlayClose: true});
+							present(d);
 						});
 
+				lvlm = 95;
+				lvla = 40;
 				function tick() {
 
 					if(basicTick){
-						
+					
 						// Use elliptical arc path segments to doubly-encode directionality.
 						edge.attr("d", function(d) {
 							var dx = d.target.x - d.source.x,
@@ -427,43 +441,94 @@
 						node.attr("transform", function(d) {
 							return "translate(" + d.x + "," + d.y + ")";
 						});
-						
+
 					} else {
+					
+						node.transition().duration(2750).attr("transform", function(d) {
+							var c  = d.cites.split(", ");
+							firstCite = c[0];
+							lastCite = c[c.length-1];
+							//console.log(lastCite)
 						
+							// list is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
+							if(firstCite != "" && firstCite != 0) { 
+								//console.log( 
+								//	d.num + " --> " + d3.select(node[0][firstCite-1])[0][0].__data__.num + " --> " + d3.select(node[0][firstCite-1])[0][0].__data__.cites.split(", ")[0]
+								//);
+								//console.log( 
+								//	"#" + d3.select(node[0][firstCite-1])[0][0].__data__.num + "'s level is " + d3.select(node[0][firstCite-1])[0][0].__data__.level
+								//);
+								var clvl = new Array();
+								c.forEach(function(ci) {
+									//console.log(d.cites + " : " + ci);
+									clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
+								});
+								//console.log(c + "'s levels are: \t\t\t\t " + clvl + " ---> " + Math.max.apply(Math, clvl) );
+							
+								// You have the level of the comment you cite PLUS ONE!
+								d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
+							} else { 
+								// No citations means your level 0.
+								d.level = 0;
+							}
+							//return "translate(" + d.x + "," + d.y + ")";
+							//return "translate(" + x( since(parseDate(d.date)) ) + "," + y(citations(d.cites)*300+50) + ")";
+							return "translate(" + x( since(parseDate(d.date)) ) + "," + y(d.level*lvlm+lvla) + ")";
+						});
 						edge.attr("d", function(d) {
 							//var dx = d.target.x - d.source.x,
 							var dx = d.target.x - d.source.x,
 							dy = d.target.y - d.source.y,
 							//dr = Math.sqrt(dx * dx + dy * dy);
 							dr = 0;
-							return "M" + x( since(parseDate(d.source.date)) ) + "," + y(citations(d.source.cites)*300+50) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(citations(d.target.cites)*300+50);
+							return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 						});
-						node.attr("transform", function(d) {
-							//return "translate(" + d.x + "," + d.y + ")";
-							return "translate(" + x( since(parseDate(d.date)) ) + "," + y(citations(d.cites)*300+50) + ")";
+						edge.transition().duration(2750).attr("d", function(d) {
+							//var dx = d.target.x - d.source.x,
+							var dx = d.target.x - d.source.x,
+							dy = d.target.y - d.source.y,
+							//dr = Math.sqrt(dx * dx + dy * dy);
+							dr = 0;
+							return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.level*lvlm+lvla) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.level*lvlm+lvla);
 						});
+						node.transition().duration(750).delay(2750).attr("r", 4);
 						force.stop();
 					}
 				}
-				
+			
 				// TOOL TIP
 				$('svg .node').tipsy({ 
 				    gravity: 'w',    // gravity
 				    html: true,     // is tooltip content HTML?
-				    offset: -30,       // pixel offset of tooltip from element
+				    offset: 15,       // pixel offset of tooltip from element
 					title: function() {
 						var d = this.__data__;
 						return "<strong>#"+d.num+"</strong> "+d.user;
 					}
 				});
-				
-				
+				$('svg .edge').tipsy({ 
+					follow: 'x',
+				    gravity: 'w',    // gravity
+				    html: true,     // is tooltip content HTML?
+				    offset: 50,       // pixel offset of tooltip from element
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.source.num+"</strong> &rarr; <strong>#"+d.target.num+"</strong>";
+					}
+				});
+			
+			
 				d3.select("#btn3-pause").on("click", function() { force.stop(); });
-				d3.select("#btn3-continue").on("click", function() { force.resume(); basicTick = true; });
-				
+				d3.select("#btn3-continue").on("click", function() { 
+					node.transition().duration(750).attr("r", 8);
+					force.resume();
+					basicTick = true;
+					$("#btn3-2").removeAttr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
+				});
+			
 				d3.select("#btn3-1").on("click", function() {
 					force.stop();
-										
+									
 					d3.select(node[0][70])
 						.transition()
 							.duration(750)
@@ -477,48 +542,35 @@
 				});
 
 				d3.select("#btn3-2").on("click", function() {
-				//	force.stop();
-
-					//console.log(d3.select(node))
-					//console.log(d3.selectAll(node[0]));
-					//node.transition().duration(500).delay(500).attr("cy", 90);
-				/*	d3.selectAll(node[0]).transition().duration(500)
-						//.attr("cy", 90)
-						.style("stroke", "red")
-				        .style("stroke-opacity", 1e-6)
-				        .style("stroke-width", 60)
-						.transition()
-							.duration(0)
-							.style("stroke-opacity", 1)
-							.style("stroke-width", 0)
-				*/
 					basicTick = false;
+					tick();
+					$(this).attr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
 				});
-				
-				
+			
+			
 
 
 			}
 
 		</script>
-		
+	
 		<div class='chart' id='chart-3'></div>
 		<button id="btn3-pause">Pause</button>
 		<button id="btn3-continue">Continue</button>
 		<button id="btn3-1">Surprise me</button>
 		<button id="btn3-2">Boom goes the dynamite!</button>
-		
+	
 		<div class='chart' id='chart-1'></div>
-		
+	
 		<div class='chart' id='chart-2'></div>
-		
+	
 		<div class="chart" id="presentation"></div>
-		
+	
 		<h2><a name="explanation" href="#explanation">#</a>Explanation</h2>
 		<p>...</p>
-		
+	
 		<h2><a name="inspiration" href="#inspiration">#</a>Inspiration</h2>
 		<p>This project is inspired by The New York Times Company Research &amp; Development Lab's <a href="http://nytlabs.com/projects/cascade.html">Cascade project</a>.</p>
-		
+	</div>
 	</body>
 </html>
