@@ -117,6 +117,10 @@
 				var since = function(date) {
 					return (date - articleDate) / 1000 / 60 / 60;
 				}
+				// Number of cites
+				var citations = function(cites) {
+					return (cites.split(", ")[0] != "") ? cites.split(", ").length : 0 ; // if empty array then 0 citations.
+				}
 				
 				// Focusing on the comments
 				var comments = jsonComments.comments;
@@ -409,34 +413,34 @@
 							$.modal("<h4>#"+d.num+": "+d.user+"</h4>"+d.contents, {closeHTML: "", overlayClose: true});
 						});
 
-				// Use elliptical arc path segments to doubly-encode directionality.
 				function tick() {
-					//console.log("How often is this called?")
-					
+
 					if(basicTick){
+						
+						// Use elliptical arc path segments to doubly-encode directionality.
 						edge.attr("d", function(d) {
 							var dx = d.target.x - d.source.x,
 							dy = d.target.y - d.source.y,
 							dr = Math.sqrt(dx * dx + dy * dy);
 							return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 						});
-
 						node.attr("transform", function(d) {
 							return "translate(" + d.x + "," + d.y + ")";
 						});
+						
 					} else {
+						
 						edge.attr("d", function(d) {
 							//var dx = d.target.x - d.source.x,
 							var dx = d.target.x - d.source.x,
 							dy = d.target.y - d.source.y,
 							//dr = Math.sqrt(dx * dx + dy * dy);
 							dr = 0;
-							return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.cites.split(", ").length*200) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.cites.split(", ").length*200);
+							return "M" + x( since(parseDate(d.source.date)) ) + "," + y(citations(d.source.cites)*300+50) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(citations(d.target.cites)*300+50);
 						});
-						
 						node.attr("transform", function(d) {
 							//return "translate(" + d.x + "," + d.y + ")";
-							return "translate(" + x( since(parseDate(d.date)) ) + "," + y(d.cites.split(", ").length*200) + ")";
+							return "translate(" + x( since(parseDate(d.date)) ) + "," + y(citations(d.cites)*300+50) + ")";
 						});
 						force.stop();
 					}
