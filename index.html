@@ -380,7 +380,7 @@
 			
 			
 				/* Graph / Network */
-				var basicTick = true;
+				var tickLayout = "";
 				var force = d3.layout.force()
 					.nodes(comments)
 					.links(links)
@@ -425,75 +425,70 @@
 							present(d);
 						});
 
+				// Arbitrary "citation level" parameters.
+				// These sould not be necessary. Find a way to do it automaticly.
 				lvlm = 95;
 				lvla = 40;
 				function tick() {
 
-					if(basicTick){
-					
-						// Use elliptical arc path segments to doubly-encode directionality.
-						edge.attr("d", function(d) {
-							var dx = d.target.x - d.source.x,
-							dy = d.target.y - d.source.y,
-							dr = Math.sqrt(dx * dx + dy * dy);
-							return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
-						});
-						node.attr("transform", function(d) {
-							return "translate(" + d.x + "," + d.y + ")";
-						});
-
-					} else {
-					
-						node.transition().duration(2750).attr("transform", function(d) {
-							var c  = d.cites.split(", ");
-							firstCite = c[0];
-							lastCite = c[c.length-1];
-							//console.log(lastCite)
-						
-							// list is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
-							if(firstCite != "" && firstCite != 0) { 
-								//console.log( 
-								//	d.num + " --> " + d3.select(node[0][firstCite-1])[0][0].__data__.num + " --> " + d3.select(node[0][firstCite-1])[0][0].__data__.cites.split(", ")[0]
-								//);
-								//console.log( 
-								//	"#" + d3.select(node[0][firstCite-1])[0][0].__data__.num + "'s level is " + d3.select(node[0][firstCite-1])[0][0].__data__.level
-								//);
-								var clvl = new Array();
-								c.forEach(function(ci) {
-									//console.log(d.cites + " : " + ci);
-									clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
-								});
-								//console.log(c + "'s levels are: \t\t\t\t " + clvl + " ---> " + Math.max.apply(Math, clvl) );
+					switch (tickLayout) {
+						case "Cartesian":
 							
-								// You have the level of the comment you cite PLUS ONE!
-								d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
-							} else { 
-								// No citations means your level 0.
-								d.level = 0;
-							}
-							//return "translate(" + d.x + "," + d.y + ")";
-							//return "translate(" + x( since(parseDate(d.date)) ) + "," + y(citations(d.cites)*300+50) + ")";
-							return "translate(" + x( since(parseDate(d.date)) ) + "," + y(d.level*lvlm+lvla) + ")";
-						});
-						edge.attr("d", function(d) {
-							//var dx = d.target.x - d.source.x,
-							var dx = d.target.x - d.source.x,
-							dy = d.target.y - d.source.y,
-							//dr = Math.sqrt(dx * dx + dy * dy);
-							dr = 0;
-							return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
-						});
-						edge.transition().duration(2750).attr("d", function(d) {
-							//var dx = d.target.x - d.source.x,
-							var dx = d.target.x - d.source.x,
-							dy = d.target.y - d.source.y,
-							//dr = Math.sqrt(dx * dx + dy * dy);
-							dr = 0;
-							return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.level*lvlm+lvla) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.level*lvlm+lvla);
-						});
-						node.transition().duration(750).delay(2750).attr("r", 4);
-						force.stop();
+							// Place nodes according to date and it "citation level" / depth of the citation tree.
+							node.transition().duration(2750).attr("transform", function(d) {
+								// Create a sort list of each nodes/comments citations.
+								var c  = d.cites.split(", ").sort(function(x,y){return x - y});
+								firstCite = c[0];
+								// Ignore empty arrays or arrays items with 0.
+								// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
+								if(firstCite != "" && firstCite != 0) { 
+									// Get the "citation level" of every comment/node that this comment/node cites.
+									var clvl = new Array();
+									c.forEach(function(ci) {
+										// Not the most pretty approach, using .__data__ instread of the D3 method .data()
+										clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
+									});
+									// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
+									d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
+								} else { 
+									// No citations means your level 0.
+									d.level = 0;
+								}
+								return "translate(" + x( since(parseDate(d.date)) ) + "," + y(d.level*lvlm+lvla) + ")";
+							});
+							// Sets radius of path/edge to zero, before transitioning the position of the path/edge
+							edge.attr("d", function(d) {
+								var dx = d.target.x - d.source.x,
+								dy = d.target.y - d.source.y,
+								dr = 0;
+								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+							});
+							edge.transition().duration(2750).attr("d", function(d) {
+								var dr = 0;
+								return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.level*lvlm+lvla) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.level*lvlm+lvla);
+							});
+							node.transition().duration(750).delay(2750).attr("r", 4);
+							force.stop();
+							
+						break;
+						case "Polar":
+							
+						break;
+						default:
+						
+							// Use elliptical arc path segments to doubly-encode directionality.
+							edge.attr("d", function(d) {
+								var dx = d.target.x - d.source.x,
+								dy = d.target.y - d.source.y,
+								dr = Math.sqrt(dx * dx + dy * dy);
+								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+							});
+							node.attr("transform", function(d) {
+								return "translate(" + d.x + "," + d.y + ")";
+							});
+							
 					}
+							
 				}
 			
 				// TOOL TIP
@@ -522,7 +517,7 @@
 				d3.select("#btn3-continue").on("click", function() { 
 					node.transition().duration(750).attr("r", 8);
 					force.resume();
-					basicTick = true;
+					tickLayout = "";
 					$("#btn3-2").removeAttr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
 				});
 			
@@ -575,7 +570,7 @@
 
 
 				d3.select("#btn3-2").on("click", function() {
-					basicTick = false;
+					tickLayout = "Cartesian";
 					tick();
 					$(this).attr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
 				});
