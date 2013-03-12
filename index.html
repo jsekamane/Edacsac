@@ -52,13 +52,26 @@
 			  stroke: black; 
 			  stroke-width; 1; 
 			}
-		
+			.dot:hover {
+				stroke: #666;
+				stroke-width: 1.5px;
+			}
+			.bar:hover {
+				opacity: 1;
+			}
 			/* Network */
 			.edge {
 				fill: none;
 				stroke: #666;
 				stroke-width: 1.5px;
-				opacity: 0.2;
+				opacity: 0.1;
+			}
+			.edge:hover {
+				opacity: 1;
+			}
+			.node:hover {
+				stroke: #666;
+				stroke-width: 1.5px;
 			}
 			path.link.resolved {
 			  stroke-dasharray: 0,2 1;
@@ -165,12 +178,6 @@
 							// Hiding image url and the comments since they break the layout of the table, because of their length
 							return (d.key == "image" || d.key == "contents") ? "#": d.value;
 						});
-				
-				/*
-				* return (parseDate(d) - articleDate) / 1000 / 60 / 60; // Hours since article published
-				* return wordCount(d);
-				* if (d) { return d.split(", ").length; } else { return "0"; } // Number of citations, rather than the list of citings
-				*/
 
 		
 				/*****************************
@@ -286,7 +293,9 @@
 		
 		
 			
-				/* Bar chart */
+				/*****************************
+				***** BAR CHART          *****
+				******************************/
 				x.domain([0, 55])
 				y.domain([0, d3.max(comments, function(d) { return wordCount(d.contents); })]);
 		
@@ -361,7 +370,9 @@
 				});
 
 
-			
+				/*****************************
+				***** GRAPH/NETWORK      *****
+				******************************/
 				// Compute the distinct links from the nodes/comments.
 				function link(source, target, value) {
 					this.source = source;
@@ -379,7 +390,8 @@
 				});
 			
 			
-				/* Graph / Network */
+				/* Presentation of graph/network */
+				var height = 550; // 500
 				var tickLayout = "";
 				var force = d3.layout.force()
 					.nodes(comments)
@@ -390,12 +402,12 @@
 					.on("tick", tick)
 					.start();
 
-				var svg = d3.select("#chart-3").append("svg:svg")
+				var svg3 = d3.select("#chart-3").append("svg:svg")
 					.attr("width", width)
 					.attr("height", height);
 
 				// Per-type markers, as they don't inherit styles.
-				svg.append("svg:defs").selectAll("marker")
+				svg3.append("svg:defs").selectAll("marker")
 					.data(["EndMarker"])
 					.enter().append("svg:marker")
 						.attr("id", String)
@@ -408,13 +420,16 @@
 						.append("svg:path")
 							.attr("d", "M0,-5L10,0L0,5");
 
-				var edge = svg.append("svg:g").selectAll(".edge")
+				var edge = svg3.append("svg:g").selectAll(".edge")
 					.data(force.links())
 					.enter().append("svg:path")
 						.attr("class", "edge")
 						.attr("marker-end", "url(#EndMarker)");
+						/*.on("mouseover", function(d,i){
+							d3.select(this).attr("class", "edge active");
+						});*/
 
-				var node = svg.append("svg:g").selectAll(".node")
+				var node = svg3.append("svg:g").selectAll(".node")
 					.data(force.nodes())
 					.enter().append("svg:circle")
 						.attr("class", "node")
@@ -428,12 +443,16 @@
 				// Arbitrary "citation level" parameters.
 				// These sould not be necessary. Find a way to do it automaticly.
 				lvlm = 95;
-				lvla = 40;
+				lvla = -300;
+				var radiusm = 5.5;
+				var anglem = 1/9;
+				var anglea = 0.5*Math.PI; // 0.5*Math.PI to start it from 12 o'clock rather than 3 o'clock.
 				function tick() {
 
 					switch (tickLayout) {
 						case "Cartesian":
 							
+							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable .call(force.drag)
 							// Place nodes according to date and it "citation level" / depth of the citation tree.
 							node.transition().duration(2750).attr("transform", function(d) {
 								// Create a sort list of each nodes/comments citations.
@@ -458,21 +477,96 @@
 							});
 							// Sets radius of path/edge to zero, before transitioning the position of the path/edge
 							edge.attr("d", function(d) {
-								var dx = d.target.x - d.source.x,
-								dy = d.target.y - d.source.y,
-								dr = 0;
-								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+								//var dx = d.target.x - d.source.x,
+								//dy = d.target.y - d.source.y,
+								//var dr = 0;
+								//return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+								// replacing the dr values with 0, but keeping what ever x,y coordinates there was.
+								return d3.select(this).attr("d").replace(/A([^\s]+)/g, "A0,0");
 							});
 							edge.transition().duration(2750).attr("d", function(d) {
 								var dr = 0;
 								return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.level*lvlm+lvla) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.level*lvlm+lvla);
 							});
 							node.transition().duration(750).delay(2750).attr("r", 4);
+							
 							force.stop();
 							
 						break;
 						case "Polar":
 							
+							var polarX = function(radius, angle) {
+								//radius = Math.log(radius);
+								return (width/2 + radius * radiusm * Math.cos(angle * anglem * Math.PI + anglea));
+							}
+							var polarY = function(radius, angle) {
+								//radius = Math.log(radius);
+								return (height/2 - radius * radiusm * Math.sin(angle * anglem * Math.PI + anglea));
+							}
+							
+							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable .call(force.drag)
+							// Place nodes with radius according to date and angle according to "citation level" / depth of the citation tree.
+							node.transition().duration(2750).attr("transform", function(d) {
+								// Create a sort list of each nodes/comments citations.
+								var c  = d.cites.split(", ").sort(function(x,y){return x - y});
+								firstCite = c[0];
+								// Ignore empty arrays or arrays items with 0.
+								// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
+								if(firstCite != "" && firstCite != 0) { 
+									// Get the "citation level" of every comment/node that this comment/node cites.
+									var clvl = new Array();
+									c.forEach(function(ci) {
+										// Not the most pretty approach, using .__data__ instread of the D3 method .data()
+										clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
+									});
+									// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
+									d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
+								} else { 
+									// No citations means your level 0.
+									d.level = 0;
+								}
+								r = since(parseDate(d.date)) * 3.5;
+								t = d.level/9 * Math.PI;
+								return "translate(" + polarX(since(parseDate(d.date)), d.level) + "," + polarY(since(parseDate(d.date)), d.level) + ")";
+							});
+							node.transition().duration(750).delay(2750).attr("r", 6);
+							edge.attr("d", function(d) {
+								// replacing the dr values with 0, but keeping what ever x,y coordinates there was.
+								return d3.select(this).attr("d").replace(/A([^\s]+)/g, "A0,0");
+							});
+							edge.transition().duration(2750).attr("d", function(d) {
+								var dr = 0;
+								if((d.source.level-d.target.level) > 3) {
+									//dr = 200 - (d.source.level-d.target.level) * 10;
+									//dr = 1;
+									var dx = polarX(since(parseDate(d.target.date)), d.target.level) - polarX(since(parseDate(d.source.date)), d.source.level),
+									dy = polarY(since(parseDate(d.target.date)), d.target.level) - polarY(since(parseDate(d.source.date)), d.source.level),
+									dr = Math.sqrt(dx * dx + dy * dy);
+								}
+								
+								return "M" + polarX(since(parseDate(d.source.date)), d.source.level) + "," + polarY(since(parseDate(d.source.date)), d.source.level) + "A" + dr + "," + dr + " 0 0,1 " + polarX(since(parseDate(d.target.date)), d.target.level) + "," + polarY(since(parseDate(d.target.date)), d.target.level);
+							})
+							//node.transition().duration(750).delay(2750).attr("r", 4);
+							force.stop();
+							
+						break;
+						case "ReturnToDefault":
+							
+							node.call(force.drag);
+							node.transition().duration(1000).attr("transform", function(d) {
+								return "translate(" + d.x + "," + d.y + ")";
+							});
+							edge.transition().duration(1000).attr("d", function(d) {
+								var dx = d.target.x - d.source.x,
+								dy = d.target.y - d.source.y,
+								dr = Math.sqrt(dx * dx + dy * dy);
+								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+							});
+							node.transition().duration(200).delay(1000).attr("r", 8);
+							
+							window.setTimeout(force.resume, 1200); // Resume, once done animating! force.resume
+							
+							tickLayout = "";
 						break;
 						default:
 						
@@ -513,13 +607,30 @@
 				});
 			
 			
-				d3.select("#btn3-pause").on("click", function() { force.stop(); });
 				d3.select("#btn3-continue").on("click", function() { 
-					node.transition().duration(750).attr("r", 8);
-					force.resume();
-					tickLayout = "";
-					$("#btn3-2").removeAttr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
+					tickLayout = "ReturnToDefault";
+					tick();
+					d3.select(this).attr("disabled", "disabled");
+					d3.select("#btn3-2").attr("disabled", null);
+					d3.select("#btn3-3").attr("disabled", null);
 				});
+
+				d3.select("#btn3-2").on("click", function() {
+					tickLayout = "Cartesian";
+					tick();
+					d3.select(this).attr("disabled", "disabled");
+					d3.select("#btn3-3").attr("disabled", null);
+					d3.select("#btn3-continue").attr("disabled", null);
+				});
+				
+				d3.select("#btn3-3").on("click", function() {
+					tickLayout = "Polar";
+					tick();
+					d3.select(this).attr("disabled", "disabled");
+					d3.select("#btn3-2").attr("disabled", null);
+					d3.select("#btn3-continue").attr("disabled", null);
+				});
+			
 			
 			
 				/* Count the number of comments per user and sort the list */
@@ -567,14 +678,6 @@
 					.attr("value", function(d){ return d.key.substring(1,d.key.length-1); })
 					.text(function(d){ return d.key.substring(1,d.key.length-1) + " ("+d.count+")"; })
 				selector.append("option").attr("selected","selected").text(" ");
-
-
-				d3.select("#btn3-2").on("click", function() {
-					tickLayout = "Cartesian";
-					tick();
-					$(this).attr("disabled", "disabled"); // because D3.js doesn't have a way of disabling attributes.
-				});
-			
 			
 
 
@@ -583,11 +686,12 @@
 		</script>
 	
 		<div class='chart' id='chart-3'></div>
-		<button id="btn3-pause">Pause</button>
-		<button id="btn3-continue">Continue</button>
+
 		<fieldset id="fs3-1"><label>Full disclosure:</label> </fieldset>
+		<button id="btn3-continue" disabled="disabled">Default</button>
 		<button id="btn3-2">Boom goes the dynamite!</button>
 		<button id="btn3-3">Round round – get around</button>
+		
 	
 		<div class='chart' id='chart-1'></div>
 	
@@ -597,6 +701,7 @@
 	
 		<h2><a name="explanation" href="#explanation">#</a>Explanation</h2>
 		<p>...</p>
+		<!-- <p>How to pronounce; <em>E&middot;dac&middot;sac</em></p> -->
 	
 		<h2><a name="inspiration" href="#inspiration">#</a>Inspiration</h2>
 		<p>This project is inspired by The New York Times Company Research &amp; Development Lab's <a href="http://nytlabs.com/projects/cascade.html">Cascade project</a>.</p>
