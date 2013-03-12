@@ -47,11 +47,18 @@
 			}
 		
 			/* x- and y-axis */
-			.domain { 
+			.domain, .tick line { 
 			  fill: none; 
 			  stroke: black; 
 			  stroke-width; 1; 
 			}
+			.circle-ticks .circle {
+				fill: #838996; 
+				stroke: none;
+				opacity: 0.05;
+			}
+			.circle-ticks:nth-child(odd) .circle { }
+
 			.dot:hover {
 				stroke: #666;
 				stroke-width: 1.5px;
@@ -72,9 +79,6 @@
 			.node:hover {
 				stroke: #666;
 				stroke-width: 1.5px;
-			}
-			path.link.resolved {
-			  stroke-dasharray: 0,2 1;
 			}
 		
 		</style>
@@ -218,11 +222,10 @@
 					.append("g")
 					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 			
-				// draw the x axis
-				var xAxis = d3.svg.axis()
-					.scale(x)
-					.orient('bottom');
-				
+				x.domain(d3.extent(comments, function(d) { return since(parseDate(d.date)); }));
+				y.domain([0, d3.max(comments, function(d) { return lixCount(d.contents); })]);
+			
+				// draw the x axis				
 				svg1.append('g')
 					.attr("class", "x axis")
 					.attr("transform", "translate(0," + height + ")")
@@ -234,10 +237,6 @@
 						.text("Hours after publication of the article");
 
 				// draw the y axis
-				var yAxis = d3.svg.axis()
-					.scale(y)
-					.orient('left');
-				
 				svg1.append('g')
 					.attr("class", "y axis")
 					.call(yAxis)
@@ -247,9 +246,6 @@
 						.attr("dy", "-4.71em")
 						.style("text-anchor", "end")
 						.text("LIX, indicating the difficulty of reading a text");
-			
-				x.domain(d3.extent(comments, function(d) { return since(parseDate(d.date)); }));
-				y.domain([0, d3.max(comments, function(d) { return lixCount(d.contents); })]);
 			
 				var comment = svg1.selectAll(".dot")
 					.data(comments)
@@ -391,7 +387,7 @@
 			
 			
 				/* Presentation of graph/network */
-				var height = 550; // 500
+				var height = 650 - margin.top - margin.bottom; // 500 - margin.top - margin.bottom;
 				var tickLayout = "";
 				var force = d3.layout.force()
 					.nodes(comments)
@@ -405,6 +401,8 @@
 				var svg3 = d3.select("#chart-3").append("svg:svg")
 					.attr("width", width)
 					.attr("height", height);
+					
+				var coordsys = svg3.append("g").attr("opacity", 0);
 
 				// Per-type markers, as they don't inherit styles.
 				svg3.append("svg:defs").selectAll("marker")
@@ -439,14 +437,44 @@
 						.on("click", function(d){
 							present(d);
 						});
+				// Added "citation" level to 		
+				node.each(function(d, i) {
+					// Create a sort list of each nodes/comments citations.
+					var c  = d.cites.split(", ").sort(function(x,y){return x - y});
+					firstCite = c[0];
+					// Ignore empty arrays or arrays items with 0.
+					// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
+					if(firstCite != "" && firstCite != 0) { 
+						// Get the "citation level" of every comment/node that this comment/node cites.
+						var clvl = new Array();
+						c.forEach(function(ci) {
+							// Not the most pretty approach, using .__data__ instread of the D3 method .data()
+							clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
+						});
+						// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
+						d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
+					} else { 
+						// No citations means your level 0.
+						d.level = 0;
+					}
+				}) 	
 
-				// Arbitrary "citation level" parameters.
-				// These sould not be necessary. Find a way to do it automaticly.
-				lvlm = 95;
-				lvla = -300;
-				var radiusm = 5.5;
-				var anglem = 1/9;
+
+				// "Citation level" parameters used in layout.
+				lvlm = (height - margin.top - margin.bottom) / d3.max(comments, function(d) { return d.level; });
+				var radiusm = (height/2) / d3.max(comments, function(d) { return since(parseDate(d.date)); }); // Half width to center origin (actually half height, because height is smallest, so elements aren't placed outside frame). Max value/date to scale accordingly.
+				var anglem = ((d3.max(comments, function(d) { return d.level; })+1) / 2); // domain is [0, 2pi]. We take the max level (+ 1, because we don't want to go all 360 degrees)  and devide by 2. Later we multiple with pi.
 				var anglea = 0.5*Math.PI; // 0.5*Math.PI to start it from 12 o'clock rather than 3 o'clock.
+				
+				// The x-axis for the polar layout
+				var xPolar = d3.scale.linear()
+					.range([0, (height/2)])
+					.domain(d3.extent(comments, function(d) { return since(parseDate(d.date)); }));
+				var xAxisPolar = d3.svg.axis()
+				    .scale(xPolar)
+				    .orient("bottom");
+				xAxisPolar.ticks(5);
+				
 				function tick() {
 
 					switch (tickLayout) {
@@ -455,40 +483,31 @@
 							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable .call(force.drag)
 							// Place nodes according to date and it "citation level" / depth of the citation tree.
 							node.transition().duration(2750).attr("transform", function(d) {
-								// Create a sort list of each nodes/comments citations.
-								var c  = d.cites.split(", ").sort(function(x,y){return x - y});
-								firstCite = c[0];
-								// Ignore empty arrays or arrays items with 0.
-								// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
-								if(firstCite != "" && firstCite != 0) { 
-									// Get the "citation level" of every comment/node that this comment/node cites.
-									var clvl = new Array();
-									c.forEach(function(ci) {
-										// Not the most pretty approach, using .__data__ instread of the D3 method .data()
-										clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
-									});
-									// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
-									d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
-								} else { 
-									// No citations means your level 0.
-									d.level = 0;
-								}
-								return "translate(" + x( since(parseDate(d.date)) ) + "," + y(d.level*lvlm+lvla) + ")";
+								return "translate(" + x( since(parseDate(d.date)) ) + "," + (height-d.level*lvlm-margin.bottom) + ")";
 							});
 							// Sets radius of path/edge to zero, before transitioning the position of the path/edge
 							edge.attr("d", function(d) {
-								//var dx = d.target.x - d.source.x,
-								//dy = d.target.y - d.source.y,
-								//var dr = 0;
-								//return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 								// replacing the dr values with 0, but keeping what ever x,y coordinates there was.
 								return d3.select(this).attr("d").replace(/A([^\s]+)/g, "A0,0");
 							});
 							edge.transition().duration(2750).attr("d", function(d) {
 								var dr = 0;
-								return "M" + x( since(parseDate(d.source.date)) ) + "," + y(d.source.level*lvlm+lvla) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + y(d.target.level*lvlm+lvla);
+								return "M" + x( since(parseDate(d.source.date)) ) + "," + (height-d.source.level*lvlm-margin.bottom) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + (height-d.target.level*lvlm-margin.bottom);
 							});
 							node.transition().duration(750).delay(2750).attr("r", 4);
+							
+							coordsys.attr("opacity", 0);
+							coordsys.selectAll("g").remove();
+							coordsys.append('g')
+								.attr("class", "x axis")
+								.attr("transform", "translate(0," + (height-margin.bottom) + ")")
+								.call(xAxis)
+								.append("text")
+									.attr("x", "50%")
+									.attr("dy", "3.71em")
+									.style("text-anchor", "middle")
+									.text("Hours after publication of the article");
+							coordsys.transition().duration(1750).attr("opacity", 1);
 							
 							force.stop();
 							
@@ -497,36 +516,16 @@
 							
 							var polarX = function(radius, angle) {
 								//radius = Math.log(radius);
-								return (width/2 + radius * radiusm * Math.cos(angle * anglem * Math.PI + anglea));
+								return (width/2 + radius * radiusm * Math.cos(angle / anglem * Math.PI + anglea));
 							}
 							var polarY = function(radius, angle) {
 								//radius = Math.log(radius);
-								return (height/2 - radius * radiusm * Math.sin(angle * anglem * Math.PI + anglea));
+								return (height/2 - radius * radiusm * Math.sin(angle / anglem * Math.PI + anglea));
 							}
 							
 							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable .call(force.drag)
 							// Place nodes with radius according to date and angle according to "citation level" / depth of the citation tree.
 							node.transition().duration(2750).attr("transform", function(d) {
-								// Create a sort list of each nodes/comments citations.
-								var c  = d.cites.split(", ").sort(function(x,y){return x - y});
-								firstCite = c[0];
-								// Ignore empty arrays or arrays items with 0.
-								// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
-								if(firstCite != "" && firstCite != 0) { 
-									// Get the "citation level" of every comment/node that this comment/node cites.
-									var clvl = new Array();
-									c.forEach(function(ci) {
-										// Not the most pretty approach, using .__data__ instread of the D3 method .data()
-										clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
-									});
-									// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
-									d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
-								} else { 
-									// No citations means your level 0.
-									d.level = 0;
-								}
-								r = since(parseDate(d.date)) * 3.5;
-								t = d.level/9 * Math.PI;
 								return "translate(" + polarX(since(parseDate(d.date)), d.level) + "," + polarY(since(parseDate(d.date)), d.level) + ")";
 							});
 							node.transition().duration(750).delay(2750).attr("r", 6);
@@ -546,7 +545,28 @@
 								
 								return "M" + polarX(since(parseDate(d.source.date)), d.source.level) + "," + polarY(since(parseDate(d.source.date)), d.source.level) + "A" + dr + "," + dr + " 0 0,1 " + polarX(since(parseDate(d.target.date)), d.target.level) + "," + polarY(since(parseDate(d.target.date)), d.target.level);
 							})
-							//node.transition().duration(750).delay(2750).attr("r", 4);
+							
+							coordsys.attr("opacity", 0);
+							coordsys.selectAll("g").remove();
+							coordsys.append('g')
+								.attr("class", "x axis polar")
+								.attr("transform", "translate(" + (width/2) + "," + (height/2) + ")")
+								.call(xAxisPolar)
+								.append("text")
+									.attr("dy", "3.71em")
+									.style("text-anchor", "start")
+									.text("Hours after publication of the article");
+							circleAxes = coordsys.selectAll('.circle-ticks')
+								.data(xPolar.ticks(5))
+								.enter().append('g')
+								.attr("class", "circle-ticks");
+							circleAxes.append("svg:circle")
+								.attr("r", function (d, i) { return d * radiusm; })
+								.attr("class", "circle")
+								.attr("cx", function(d) { return width/2; })
+								.attr("cy", function(d) { return height/2; })
+							coordsys.transition().duration(1750).attr("opacity", 1);
+							
 							force.stop();
 							
 						break;
@@ -563,6 +583,8 @@
 								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 							});
 							node.transition().duration(200).delay(1000).attr("r", 8);
+							
+							coordsys.selectAll("g").remove();
 							
 							window.setTimeout(force.resume, 1200); // Resume, once done animating! force.resume
 							
