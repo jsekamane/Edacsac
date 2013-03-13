@@ -427,6 +427,7 @@
 							d3.select(this).attr("class", "edge active");
 						});*/
 
+			
 				var node = svg3.append("svg:g").selectAll(".node")
 					.data(force.nodes())
 					.enter().append("svg:circle")
@@ -437,6 +438,8 @@
 						.on("click", function(d){
 							present(d);
 						});
+						
+						
 				// Added "citation" level to 		
 				node.each(function(d, i) {
 					// Create a sort list of each nodes/comments citations.
@@ -654,7 +657,28 @@
 				});
 			
 			
-			
+				
+				var highlightUser = function(user){
+					/* make log of objects/nodes belong to that user */
+					ulog = new Array();
+					comments.forEach(function(d){
+						if(user == d.user) ulog.push(node[0][d.num-1]);
+						// http://stackoverflow.com/a/10541220/1053612
+						var key = JSON.stringify(d.user)
+					    counter[key] = (counter[key] || 0) + 1
+					});
+					// animation
+					d3.selectAll(ulog)
+						.transition()
+							.duration(350)
+							.style("stroke", "red")
+					        .style("stroke-opacity", 1e-6)
+					        .style("stroke-width", 60)
+							.transition()
+								.duration(750)
+								.style("stroke-opacity", 1)
+								.style("stroke-width", 0);
+				}
 				/* Count the number of comments per user and sort the list */
 				// http://stackoverflow.com/a/10541220/1053612
 				counter = {}
@@ -672,27 +696,7 @@
 					.append("select")
 					.attr("id", "s3-1")
 					.on("change", function(){
-						/* make log of objects/nodes belong to that user */
-						u = this.value;
-						ulog = new Array();
-						comments.forEach(function(d){
-							if(u == d.user) ulog.push(node[0][d.num-1]);
-							// http://stackoverflow.com/a/10541220/1053612
-							var key = JSON.stringify(d.user)
-						    counter[key] = (counter[key] || 0) + 1
-						});
-						// animation
-						d3.selectAll(ulog)
-							.transition()
-								.duration(350)
-								.style("stroke", "red")
-						        .style("stroke-opacity", 1e-6)
-						        .style("stroke-width", 60)
-								.transition()
-									.duration(750)
-									.style("stroke-opacity", 1)
-									.style("stroke-width", 0);
-
+						highlightUser(this.value)
 					})
 				selector.selectAll("option")
 					.data(countersort)
@@ -700,8 +704,18 @@
 					.attr("value", function(d){ return d.key.substring(1,d.key.length-1); })
 					.text(function(d){ return d.key.substring(1,d.key.length-1) + " ("+d.count+")"; })
 				selector.append("option").attr("selected","selected").text(" ");
-			
+				d3.select("#fs3-1 label")
+					.on("click", function(){
+						e = document.getElementById("s3-1")
+						highlightUser(e.options[e.selectedIndex].value)
+				});
 
+				// TOOL TIP
+				$('#fs3-1').tipsy();
+				$('span.btn3-continue').tipsy();
+				$('span.btn3-2').tipsy();
+				$('span.btn3-3').tipsy();
+				$('span.btn3-seq').tipsy();
 
 			}
 
@@ -709,10 +723,12 @@
 	
 		<div class='chart' id='chart-3'></div>
 
-		<fieldset id="fs3-1"><label>Full disclosure:</label> </fieldset>
-		<button id="btn3-continue" disabled="disabled">Default</button>
-		<button id="btn3-2">Boom goes the dynamite!</button>
-		<button id="btn3-3">Round round – get around</button>
+		<fieldset id="fs3-1" title="Highlight comments by user. Click the 'Full disclosure'-text to re-highlight comments once the user is selected."><label>Full disclosure:</label> </fieldset>
+		<button id="btn3-continue" disabled="disabled">Default</button><span class="help btn3-continue" title="Show comments as an unsorted network. The largest chains of connected comments tends to be focused around the center.">?</span>
+		<button id="btn3-2">Boom goes the dynamite!</button><span class="help btn3-2" title="Sort the comments linearly by date, while still being able to see how comments reference each other.">?</span>
+		<button id="btn3-3">Round round get around</button><span class="help btn3-3" title="Sort the comments circularly by date (radius being the date), while still being able to see how comments reference each other.">?</span>
+		
+		<button id="btn3-seq">Sequence</button><span class="help btn3-seq" title="Play sequence">?</span>
 		
 	
 		<div class='chart' id='chart-1'></div>
