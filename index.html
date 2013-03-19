@@ -30,7 +30,7 @@
 		</form>
 		<script type='text/javascript'>
 			$("#form").submit(function() {
-				$.modal('<h1>Sorry to let you down!</h1><p>I\'d love it too, if this page was able to automatically crawl any webpage and visualize the discussion right here, for your and my viewing pleasure. Heck I\'d even be satisfied, if the page was able to do so for discussions found at <a href="http://newz.dk">newz.dk</a>. But I am sorry to let you down; <em>this form has no functionality...</em></p><p><strong>You are however welcome to <a href="https://github.com/jsekamane">Fork me on GitHub</a></strong> and add this functionality. I\'ll through in the script (Python), that I used to crawl for data and that exports the data to JSON – no extra charge. Well <a href="http://creativecommons.org/licenses/by/3.0/">CC Attribution 3.0 Unported</a>, so no charge at all. Go nuts!</p><p>Yours faithfully<br><em><a href="http://jonas.sekamane.com">Jonas K. Sekamane</a></em></p><a href="https://github.com/jsekamane"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub"></a>', {closeHTML: "", overlayClose: true});
+				$.modal('<h1>Sorry to let you down!</h1><p>I\'d love it too, if this page was able to automatically crawl any webpage and visualize the discussion right here, for your and my viewing pleasure. Heck I\'d even be satisfied, if the page was able to do so for discussions found at <a href="http://newz.dk">newz.dk</a>. I am sorry to let you down; <em>this form has no functionality...</em></p><p><strong>You are however welcome to <a href="https://github.com/jsekamane">Fork me on GitHub</a></strong> and add this functionality. I\'ll through in the script (Python), that I used to crawl for data and that exports the data to JSON – no extra charge. Well <a href="http://creativecommons.org/licenses/by/3.0/">CC Attribution 3.0 Unported</a>, so no charge at all. Go nuts!</p><p>Yours faithfully<br><em><a href="http://jonas.sekamane.com">Jonas K. Sekamane</a></em></p><a href="https://github.com/jsekamane"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub"></a>', {closeHTML: "", overlayClose: true});
 				return false;
 			});
 		</script>
@@ -462,22 +462,23 @@
 				var node = svg3.append("svg:g").selectAll(".node")
 					.data(force.nodes())
 					.enter()
-					/*.append("svg:circle") // Use dots
+					.append("g")
+					.attr("class", "node")
+					.call(force.drag)
+					.on("click", function(d){
+						present(d);
+					})
+					/*node.append("svg:circle") // Use dots
 						.attr("class", "node")
 						.attr("r", 8)
-						.style("fill", function(d) { return color(d.rating); })
-						*/
-					.append("svg:image") // Use images
-					    .attr("class", "node")
+						.style("fill", function(d) { return color(d.rating); })*/
+					node.append("svg:image") // Use images
 					    .attr("xlink:href", function(d) { return d.image; })
 					    .attr("x", "-8px")
 					    .attr("y", "-8px")
 					    .attr("width", "16px")
 					    .attr("height", "16px")
-						.call(force.drag)
-						.on("click", function(d){
-							present(d);
-						});
+						
 						
 						
 				// Added "citation" level to 		
@@ -537,7 +538,12 @@
 								var dr = 0;
 								return "M" + x( since(parseDate(d.source.date)) ) + "," + (height-d.source.level*lvlm-margin.bottom) + "A" + dr + "," + dr + " 0 0,1 " + x( since(parseDate(d.target.date)) ) + "," + (height-d.target.level*lvlm-margin.bottom);
 							});
-							node.transition().duration(750).delay(2750).attr("r", 4);
+							node.select("image").transition().duration(750).delay(2750)
+								.attr("x", "-5px")
+							    .attr("y", "-5px")
+							    .attr("width", "10px")
+							    .attr("height", "10px")
+							//node.select("circle").transition().duration(750).delay(2750).attr("r", 4);
 							
 							coordsys.attr("opacity", 0);
 							coordsys.selectAll("g").remove();
@@ -571,7 +577,12 @@
 							node.transition().duration(2750).attr("transform", function(d) {
 								return "translate(" + polarX(since(parseDate(d.date)), d.level) + "," + polarY(since(parseDate(d.date)), d.level) + ")";
 							});
-							node.transition().duration(750).delay(2750).attr("r", 6);
+							node.select("image").transition().duration(750).delay(2750)
+								.attr("x", "-6px")
+							    .attr("y", "-6px")
+							    .attr("width", "12px")
+							    .attr("height", "12px")
+							//node.select("circle").transition().duration(750).delay(2750).attr("r", 6);
 							edge.attr("d", function(d) {
 								// replacing the dr values with 0, but keeping what ever x,y coordinates there was.
 								return d3.select(this).attr("d").replace(/A([^\s]+)/g, "A0,0");
@@ -625,7 +636,12 @@
 								dr = Math.sqrt(dx * dx + dy * dy);
 								return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
 							});
-							node.transition().duration(200).delay(1000).attr("r", 8);
+							node.select("image").transition().duration(200).delay(1000)
+								.attr("x", "-8px")
+							    .attr("y", "-8px")
+							    .attr("width", "16px")
+							    .attr("height", "16px")
+							//node.select("circle").transition().duration(200).delay(1000).attr("r", 8);
 							
 							coordsys.selectAll("g").remove();
 							
@@ -773,27 +789,18 @@
 						var key = JSON.stringify(d.user)
 					    counter[key] = (counter[key] || 0) + 1
 					});
-					// animation
+					// animation: added circles
 					d3.selectAll(ulog)
-						.transition()
-							.duration(350)
-							/*.style("stroke", "red")
-					        .style("stroke-opacity", 1e-6)
-					        .style("stroke-width", 60)*/
-							.style("opacity", 1e-6)
-							.attr("x", "-24px")
-						    .attr("y", "-24px")
-						    .attr("width", "48px")
-						    .attr("height", "48px")
-							.transition()
-								.duration(750)
-								/*.style("stroke-opacity", 1)
-								.style("stroke-width", 0);*/
-								.style("opacity", 1)
-								.attr("x", "-8px")
-							    .attr("y", "-8px")
-							    .attr("width", "16px")
-							    .attr("height", "16px")
+						.append("circle").attr("r", 6)
+						.style("stroke", "red")
+						.style("fill", "none")
+						.transition().duration(350)
+							.style("stroke-opacity", 1e-6)
+							.style("stroke-width", 60)
+							.transition().duration(750)
+								.style("stroke-opacity", 1)
+								.style("stroke-width", 0)
+									.remove();
 				}
 				/* Count the number of comments per user and sort the list */
 				// http://stackoverflow.com/a/10541220/1053612
