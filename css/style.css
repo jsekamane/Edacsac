@@ -60,6 +60,7 @@ body {
 body > .main {
 	margin: 0 auto;
 	width: 980px;
+	position: relative;
 }
 
 h1 {
@@ -96,12 +97,13 @@ aside {
 p {
   line-height: 1.5em;
 }
-body > p {
+.main > p {
   width: 720px;
+  margin-top: 1em;
 }
 
 
-body > blockquote {
+.main > blockquote {
   width: 640px;
 }
 
@@ -123,7 +125,7 @@ blockquote cite {
 	text-align: right;
 }
 
-body > li {
+.main > li {
   width: 680px;
 }
 
@@ -210,7 +212,14 @@ fieldset label { font-size: 80%; }
 
 span.help { 
 	font-size: 80%;
-	padding: 0 1em 0 0;
+	padding: 0 0.5em 0 0;
 	color: #ccc;
 	cursor: help;
+}
+dfn {
+	border-bottom: 1px #ccc dashed;
+	cursor: help;
+}
+dfn:hover {
+	background: lemonchiffon;
 }
