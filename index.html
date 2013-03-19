@@ -3,8 +3,9 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-		<meta name="robots" content="noindex, nofollow" />
+		<meta name="robots" content="noindex, nofollow">
 		<meta name="author" content="Jonas K. Sekamane">
+		<meta name="date" content="2013-03-19" scheme="YYYY-MM-DD">
 		
 		<title>Edacsac</title>
 		
@@ -103,13 +104,27 @@
 		</style>
 	
 		<script type='text/javascript'>
+		
+			// D3.JS SPECIFIC FUNCTIONS
+			
+			// Parse date from a "25. jul. 2012 09:51" format.
 			var parseDate = d3.time.format("%d. %b. %Y %H:%M").parse;
-	
+			
+			// Custom color scale, where "Neutral" is predefined
+			d3.scale.category10custom = function() { return d3.scale.ordinal().range(d3_category10custom); };
+			var d3_category10custom = [ "#888", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
+			var color = d3.scale.category10custom();
+			var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
+			
+			
+			// GENERIC FUNCTIONS
+			
+			// Strip HTML
 			// http://stackoverflow.com/a/822486/1053612
 			function stripHTML(html, tags) {
 				var tmp = document.createElement("div");
 				tmp.innerHTML = html;
-				// Also strip the content of some tags
+				// Strip the content of some tags (Array of tags)
 				if(tags){
 					for(var j = tags.length-1;j >= 0; j--){
 						var remove = tmp.getElementsByTagName(tags[j]);
@@ -121,36 +136,39 @@
 				}
 				return tmp.textContent||tmp.innerText;
 			}
-	
-			// word count
+			
+			// Word count and other things
 			// http://jsfiddle.net/deepumohanp/jZeKu/
 			var regex = /\s+/gi;
-			var wordCount = function(value) {
-				return value.trim().replace(regex, ' ').split(' ').length;
-			}
-			var totalChars = function(value) {
-				return value.length;
-			}
-			var charCount = function(value) {
-				return value.trim().length;
-			}
-			var charCountNoSpace = function(value) {
-				return value.replace(regex, '').length;
-			}
+			var wordCount = function(value) { return value.trim().replace(regex, ' ').split(' ').length; }
+			var totalChars = function(value) { return value.length; }
+			var charCount = function(value) { return value.trim().length; }
+			var charCountNoSpace = function(value) { return value.replace(regex, '').length; }
 			var lixCount = function(value) {
 				//value = stripHTML(value,["blockquote"]);
-				var A = wordCount(value);									// Number of words
-				var B = value.match(/([.?!:;])/g, '').length;													// Number of periods (defined by period, colon or capital first letter)
-				var C = value.replace(/([.,?!-_])/g, '').match(/([^\s]{6,})/g, '').length;	// Number of long words (More than 6 letters)
-				//return B;
+				var A = wordCount(value); // Number of words
+				var B = value.match(/([.?!:;])/g, '').length; // Number of periods (defined by period, colon or capital first letter)
+				var C = value.replace(/([.,?!-_])/g, '').match(/([^\s]{6,})/g, '').length; // Number of long words (More than 6 letters)
 				return A/B + (C * 100)/A;
 			}
 		
-			// Present comment
+			// Present a comment using jQuery.simplemodal
 			var present  = function(d) {
 				$.modal("<h4><a href='http://newz.dk/anonymous-tager-afstand-fra-angreb-paa-fagforeningen-3f-s-hjemmeside/page"+d.page+"#"+d.post+"'>#"+d.num+": "+d.user+"</a></h4>"+d.contents, {closeHTML: "", overlayClose: true});
 			}
+			
+			// Hours since article date
+			var since = function(date) {
+				return (date - articleDate) / 1000 / 60 / 60;
+			}
+			// Number of cites
+			var citations = function(cites) {
+				return (cites.split(", ")[0] != "") ? cites.split(", ").length : 0 ; // if empty array then 0 citations.
+			}
 		
+		
+			// LOAD DATA
+			
 			// Loading data from multiple sources (currently only 1, therefore remaining = 1)
 			var jsonComments, jsonEdges, remaining = 1;
 			d3.json("crawler/comments-crawl.json", function(error, json) {
@@ -168,28 +186,23 @@
 
 			function dataLoaded() {
 			
+			
+				// SETTING GLOBAL VARIABLES
+			
 				// Setting the date on which the article was published
 				articleDate = parseDate(jsonComments.articleDate);
-			
-				// hours since article date
-				var since = function(date) {
-					return (date - articleDate) / 1000 / 60 / 60;
-				}
-				// Number of cites
-				var citations = function(cites) {
-					return (cites.split(", ")[0] != "") ? cites.split(", ").length : 0 ; // if empty array then 0 citations.
-				}
 			
 				// Focusing on the comments
 				var comments = jsonComments.comments;
 				var maxSince = d3.max(comments, function(d) { return since(parseDate(d.date)); });
 
 			
+			
 				/*****************************
 				***** TABLE PRESENTATION *****
 				******************************/
 				var table = d3.select("#presentation").append("table").attr("class","grid");
-
+				
 				var thead = table.append("thead");
 					thead.append("th").text("num");
 					thead.append("th").text("page");
@@ -200,11 +213,11 @@
 					thead.append("th").text("date");
 					thead.append("th").text("content");
 					thead.append("th").text("cites");
-
+					
 				var tr = table.selectAll("tr")
 					.data(comments)
 					.enter().append("tr");
-			
+					
 				var td = tr.selectAll("td")
 						.data(function(d) { return d3.entries(d); })
 						.enter().append("td")
@@ -213,25 +226,15 @@
 							return (d.key == "image" || d.key == "contents") ? "#": d.value;
 						});
 
+
 		
 				/*****************************
-				***** TIME LINE          *****
+				***** TIMELINE+BAR: VAR  *****
 				******************************/
-			
-				// Custom color scale, where "Neutral" is predefined
-				d3.scale.category10custom = function() {
-					return d3.scale.ordinal().range(d3_category10custom);
-				};
-				var d3_category10custom = [ "#888", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf" ];
-				var color = d3.scale.category10custom();
-				var temp = color("Neutral"); // Just to ensure that "Neutral" is the first, e.g. gray.
-			
-			
-				// Time line: Hours after publication VS lix!
 				var margin = {top: 40, right: 15, bottom: 60, left: 60},
 				    width = 960 - margin.left - margin.right,
 				    height = 500 - margin.top - margin.bottom;
-
+				
 				var x = d3.scale.linear()
 					.range([0, width]);
 
@@ -245,7 +248,12 @@
 				var yAxis = d3.svg.axis()
 				    .scale(y)
 				    .orient("left");
-
+				
+				
+				/*****************************
+				***** TIMELINE           *****
+				******************************/
+				// Timeline: Hours after publication VS lix!
 				var svg1 = d3.select("#chart-1").append("svg")
 				    .attr("width", width + margin.left + margin.right)
 				    .attr("height", height + margin.top + margin.bottom)
@@ -306,18 +314,7 @@
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
 			
-				// TOOL TIP
-				$('svg .dot').tipsy({ 
-				    gravity: 'w',    // gravity
-				    html: true,     // is tooltip content HTML?
-				    offset: 10,       // pixel offset of tooltip from element
-					title: function() {
-						var d = this.__data__;
-						return "<strong>#"+d.num+"</strong> "+d.user;
-					}
-				});
-		
-		
+			
 			
 				/*****************************
 				***** BAR CHART          *****
@@ -360,7 +357,7 @@
 					.attr("y", function(d) { return 0; })
 					.attr("x", function(d) { return x( since(parseDate(d.date)) ); }) // Hours since article published)
 					.attr("width", 4)
-					.attr("y", function(d) { return y(wordCount(stripHTML(d.contents,["blockquote"]))+8); })
+					.attr("y", function(d) { return y(wordCount(stripHTML(d.contents,["blockquote"]))+8); }) // +8 so the bar goes below the x-axis and, is clickable when wordcount is very low (close to zero).
 					.attr("height", function(d) { return (height - y(wordCount(stripHTML(d.contents,["blockquote"])))+8); })
 					.style("fill", function(d) { return color(d.rating); })
 					.on("click", function(d){
@@ -384,21 +381,14 @@
 					.style("text-anchor", "end")
 					.text(function(d) { return d; });
 				
-				// TOOL TIP
-				$('svg .bar').tipsy({ 
-				    gravity: 'w',    // gravity
-				    html: true,     // is tooltip content HTML?
-				    offset: 2,       // pixel offset of tooltip from element
-					title: function() {
-						var d = this.__data__;
-						return "<strong>#"+d.num+"</strong> "+d.user;
-					}
-				});
+
 
 
 				/*****************************
 				***** GRAPH/NETWORK      *****
 				******************************/
+				
+				// GENERATING LINKS/EDGES
 				// Compute the distinct links from the nodes/comments.
 				function link(source, target, value) {
 					this.source = source;
@@ -418,7 +408,8 @@
 			
 				/* Presentation of graph/network */
 				var height = 650 - margin.top - margin.bottom; // 500 - margin.top - margin.bottom;
-				var tickLayout = "";
+				var tickLayout = ""; // default layout
+				
 				var force = d3.layout.force()
 					.nodes(comments)
 					.links(links)
@@ -431,7 +422,8 @@
 				var svg3 = d3.select("#chart-3").append("svg:svg")
 					.attr("width", width)
 					.attr("height", height);
-					
+				
+				// Add empty containers for the co-ordinate system and for the sequence indicator.
 				var coordsys = svg3.append("g").attr("opacity", 0);
 				var seqindicator = svg3.append("g").attr("class", "seqindicator");
 
@@ -455,9 +447,6 @@
 						.attr("class", "edge")
 						.attr("opacity", 0.1)
 						.attr("marker-end", "url(#EndMarker)");
-						/*.on("mouseover", function(d,i){
-							d3.select(this).attr("class", "edge active");
-						});*/
 
 				var node = svg3.append("svg:g").selectAll(".node")
 					.data(force.nodes())
@@ -467,65 +456,85 @@
 					.call(force.drag)
 					.on("click", function(d){
 						present(d);
-					})
-					/*node.append("svg:circle") // Use dots
-						.attr("class", "node")
-						.attr("r", 8)
-						.style("fill", function(d) { return color(d.rating); })*/
-					node.append("svg:image") // Use images
-					    .attr("xlink:href", function(d) { return d.image; })
-					    .attr("x", "-8px")
-					    .attr("y", "-8px")
-					    .attr("width", "16px")
-					    .attr("height", "16px")
-						
-						
-						
-				// Added "citation" level to 		
+					});
+				/*
+				// Use dots
+				node.append("svg:circle") 
+					.attr("class", "node")
+					.attr("r", 8)
+					.style("fill", function(d) { return color(d.rating); });
+				*/
+				// Use images
+				node.append("svg:image")
+				    .attr("xlink:href", function(d) { return d.image; })
+				    .attr("x", "-8px")
+				    .attr("y", "-8px")
+				    .attr("width", "16px")
+				    .attr("height", "16px");
+				
+				
+				// ADD "CITATION" DEPTH / "CITATION" LEVEL
 				node.each(function(d, i) {
+					
 					// Create a sort list of each nodes/comments citations.
 					var c  = d.cites.split(", ").sort(function(x,y){return x - y});
 					firstCite = c[0];
+					
 					// Ignore empty arrays or arrays items with 0.
 					// Array is sorted so if a #0 references exsists it will be the first, we can therefore restrict ourselves to looking at the first item in the array.
 					if(firstCite != "" && firstCite != 0) { 
-						// Get the "citation level" of every comment/node that this comment/node cites.
+						
+						// Get the "citation" depth of every comment/node that this comment/node cites.
 						var clvl = new Array();
 						c.forEach(function(ci) {
 							// Not the most pretty approach, using .__data__ instread of the D3 method .data()
 							clvl.push( d3.select(node[0][ci-1])[0][0].__data__.level );
 						});
-						// Assign this comment/node the highest "citation level" of the comments/nodes it cites, and then PLUS ONE!
+						
+						// Assign this comment/node the highest "citation" depth of the comments/nodes it cites, and then PLUS ONE!
 						d.level = Math.max.apply(Math, clvl) + 1; // http://ejohn.org/blog/fast-javascript-maxmin/
+						
 					} else { 
-						// No citations means your level 0.
+						// No citations means your depth is 0.
 						d.level = 0;
 					}
 				}) 	
 
 
-				// "Citation level" parameters used in layout.
-				lvlm = (height - margin.top - margin.bottom) / d3.max(comments, function(d) { return d.level; });
-				var radiusm = (height/2) / maxSince; // Half width to center origin (actually half height, because height is smallest, so elements aren't placed outside frame). Max value/date to scale accordingly.
-				var anglem = ((d3.max(comments, function(d) { return d.level; })+1) / 2); // domain is [0, 2pi]. We take the max level (+ 1, because we don't want to go all 360 degrees)  and devide by 2. Later we multiple with pi.
-				var anglea = 0.5*Math.PI; // 0.5*Math.PI to start it from 12 o'clock rather than 3 o'clock.
+				// LAYOUT PARAMETERS FOR PRESENTING "CITATION" DEPTH
 				
-				// The x-axis for the polar layout
+				// Finding the height for one level, such that all levels will fit within the constrained height.
+				lvlm = (height - margin.top - margin.bottom) / d3.max(comments, function(d) { return d.level; });
+				
+				// Half the width to center origin – actually we use half height (because height of canvas is smaller than width, so elements aren't placed outside frame). Max value/date to scale accordingly.
+				var radiusm = (height/2) / maxSince; 
+				// Finding the angle for one level, such that all levels will fit within a 360 circle.
+				// Domain is [0, 2pi]. We take the max depth/level (+ 1, because we don't want to go all 360 degrees) and devide by 2 (from 2pi). Later we multiple with pi.
+				var anglem = ((d3.max(comments, function(d) { return d.level; })+1) / 2); 
+				// Angle Starting position: 0.5*Math.PI to start it from 12 o'clock rather than 3 o'clock.
+				var anglea = 0.5*Math.PI;
+				
+				// The x-axis for the polar layout (scaled to half height, again because height of canvas is smaller than width)
 				var xPolar = d3.scale.linear()
 					.range([0, (height/2)])
 					.domain(d3.extent(comments, function(d) { return since(parseDate(d.date)); }));
 				var xAxisPolar = d3.svg.axis()
 				    .scale(xPolar)
 				    .orient("bottom");
+				// Only five ticks, such that it will fit with the circular ticks we add later.
 				xAxisPolar.ticks(5);
 				
+				
+				
+				// TICK FUNCTION / LAYOUT
+				// https://github.com/mbostock/d3/wiki/Force-Layout#wiki-tick
 				function tick() {
 
 					switch (tickLayout) {
 						case "Cartesian":
 							
-							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable .call(force.drag)
-							// Place nodes according to date and it "citation level" / depth of the citation tree.
+							node.on("mousedown.drag", null).on("touchstart.drag", null); // temporarly disable. Use .call(force.drag) to re-enable.
+							// Place nodes according to date and its "citation" level / depth of the citation tree.
 							node.transition().duration(2750).attr("transform", function(d) {
 								return "translate(" + x( since(parseDate(d.date)) ) + "," + (height-d.level*lvlm-margin.bottom) + ")";
 							});
@@ -563,12 +572,11 @@
 						break;
 						case "Polar":
 							
+							// Converting radius and angle into X and Y (polar) coordinates, that are centered on the canvas
 							var polarX = function(radius, angle) {
-								//radius = Math.log(radius);
 								return (width/2 + radius * radiusm * Math.cos(angle / anglem * Math.PI + anglea));
 							}
 							var polarY = function(radius, angle) {
-								//radius = Math.log(radius);
 								return (height/2 - radius * radiusm * Math.sin(angle / anglem * Math.PI + anglea));
 							}
 							
@@ -589,6 +597,7 @@
 							});
 							edge.transition().duration(2750).attr("d", function(d) {
 								var dr = 0;
+								// We want straight edges (dr=0) for nodes that are close (in level/depth) and arched edges otherwise (dr>0).
 								if((d.source.level-d.target.level) > 3) {
 									//dr = 200 - (d.source.level-d.target.level) * 10;
 									//dr = 1;
@@ -596,7 +605,6 @@
 									dy = polarY(since(parseDate(d.target.date)), d.target.level) - polarY(since(parseDate(d.source.date)), d.source.level),
 									dr = Math.sqrt(dx * dx + dy * dy);
 								}
-								
 								return "M" + polarX(since(parseDate(d.source.date)), d.source.level) + "," + polarY(since(parseDate(d.source.date)), d.source.level) + "A" + dr + "," + dr + " 0 0,1 " + polarX(since(parseDate(d.target.date)), d.target.level) + "," + polarY(since(parseDate(d.target.date)), d.target.level);
 							})
 							
@@ -666,28 +674,11 @@
 							
 				}
 			
-				// TOOL TIP
-				$('svg .node').tipsy({ 
-				    gravity: 'w',    // gravity
-				    html: true,     // is tooltip content HTML?
-				    offset: 15,       // pixel offset of tooltip from element
-					title: function() {
-						var d = this.__data__;
-						return "<strong>#"+d.num+"</strong> "+d.user;
-					}
-				});
-				$('svg .edge').tipsy({ 
-					follow: 'x',
-				    gravity: 'w',    // gravity
-				    html: true,     // is tooltip content HTML?
-				    offset: 50,       // pixel offset of tooltip from element
-					title: function() {
-						var d = this.__data__;
-						return "<strong>#"+d.source.num+"</strong> &rarr; <strong>#"+d.target.num+"</strong>";
-					}
-				});
+				
+				
+				// CONTROLERS
 			
-			
+				// Change layout
 				d3.select("#btn3-continue").on("click", function() { 
 					tickLayout = "ReturnToDefault";
 					tick();
@@ -712,12 +703,11 @@
 					d3.select("#btn3-continue").attr("disabled", null);
 				});
 				
+				// Play Sequence
 				var seqtime = 8000;
 				d3.select("#btn3-seq").on("click", function() {	
-					var thisbtn = d3.select(this)
-					thisbtn
-						.attr("disabled", "disabled")
-						.attr("class", "blink");
+					var thisbtn = d3.select(this);
+					thisbtn.attr("disabled", "disabled").attr("class", "blink");
 									
 					// Hide nodes and edges
 					node.attr("opacity", 0);
@@ -726,27 +716,17 @@
 					// Add nodes based time since article publish
 					var i = 0;
 					var placeNodeInterval = setInterval(function(){
-						//console.log("Hours since... " + i)
+						// Hours since article published: i
 						node.attr("opacity", function(d) {
-							if( i >= since(parseDate(d.date)) ) {
-								return 1;
-							} else {
-								return 0;
-							}
+							return (i >= since(parseDate(d.date))) ? 1 : 0;
 						});	
 						edge.attr("opacity", function(d) {
-							if( i >= since(parseDate(d.source.date)) ) {
-								return 0.1;
-							} else {
-								return 0;
-							}
+							return (i >= since(parseDate(d.source.date))) ? 0.1 : 0;
 						});						
 						i++;
 						if(i > Math.ceil(maxSince)) {
 							clearInterval(placeNodeInterval);
-							thisbtn
-								.attr("disabled", null)
-								.attr("class", null);
+							thisbtn.attr("disabled", null).attr("class", null);
 						}
 					}, (seqtime/maxSince));
 					
@@ -778,18 +758,17 @@
 					
 				});
 			
-			
-				
+				// Highlight a User
 				var highlightUser = function(user){
-					/* make log of objects/nodes belong to that user */
+					// Makes log of objects/nodes belong to that user 
 					ulog = new Array();
 					comments.forEach(function(d){
 						if(user == d.user) ulog.push(node[0][d.num-1]);
 						// http://stackoverflow.com/a/10541220/1053612
-						var key = JSON.stringify(d.user)
-					    counter[key] = (counter[key] || 0) + 1
+						var key = JSON.stringify(d.user);
+					    counter[key] = (counter[key] || 0) + 1;
 					});
-					// animation: added circles
+					// Animation: added red circles
 					d3.selectAll(ulog)
 						.append("circle").attr("r", 6)
 						.style("stroke", "red")
@@ -813,7 +792,6 @@
 				var countersort = []; // First create the array of keys/net_total so that we can sort it
 				for (var key in counter) { countersort.push({key:key,count:counter[key]}); }
 				countersort.sort(function(x,y){return y.count - x.count}); // Now sort it
-				
 				/* Add a select from which users can be picked */
 				var selector = d3.select("#fs3-1")
 					.append("select")
@@ -826,19 +804,68 @@
 					.enter().append("option")
 					.attr("value", function(d){ return d.key.substring(1,d.key.length-1); })
 					.text(function(d){ return d.key.substring(1,d.key.length-1) + " ("+d.count+")"; })
-				selector.append("option").attr("selected","selected").text(" ");
-				d3.select("#fs3-1 label")
+				selector.append("option").attr("selected","selected").text(" "); // Empty by default
+				d3.select("#fs3-1 label") // Clicking the label re-highlight users comments
 					.on("click", function(){
 						e = document.getElementById("s3-1")
 						highlightUser(e.options[e.selectedIndex].value)
 				});
 
-				// TOOL TIP
+
+				
+				// JQUERY TIPSY - TOOL TIP
+				
+				// Tool tip timeline
+				$('svg .dot').tipsy({ 
+				    gravity: 'w',
+				    html: true,
+				    offset: 10,
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.num+"</strong> "+d.user;
+					}
+				});
+				
+				// Tool tip bar
+				$('svg .bar').tipsy({ 
+				    gravity: 'w',
+				    html: true,
+				    offset: 2,
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.num+"</strong> "+d.user;
+					}
+				});
+				
+				// Tool tip network/graph
+				$('svg .node').tipsy({ 
+				    gravity: 'w',
+				    html: true,
+				    offset: 15,
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.num+"</strong> "+d.user;
+					}
+				});
+				$('svg .edge').tipsy({ 
+					follow: 'x',
+				    gravity: 'w',
+				    html: true,
+				    offset: 50,
+					title: function() {
+						var d = this.__data__;
+						return "<strong>#"+d.source.num+"</strong> &rarr; <strong>#"+d.target.num+"</strong>";
+					}
+				});
+				
+				// Tool tip
 				$('#fs3-1').tipsy();
 				$('span.btn3-continue').tipsy();
 				$('span.btn3-2').tipsy();
 				$('span.btn3-3').tipsy();
 				$('span.btn3-seq').tipsy();
+				
+				$('dfn').tipsy();
 
 			}
 
@@ -846,13 +873,14 @@
 	
 		<div class='chart' id='chart-3'></div>
 
+		<aside>
+			<button id="btn3-seq">Sequence</button><span class="help btn3-seq" title="Play as sequence. Gives an 8-second replay of the comments as they are posted in the discussion.">?</span>
+		</aside>
+
 		<fieldset id="fs3-1" title="Highlight comments by user. Click the 'Full disclosure'-text to re-highlight comments once the user is selected."><label>Full disclosure:</label> </fieldset>
 		<button id="btn3-continue" disabled="disabled">Default</button><span class="help btn3-continue" title="Show comments as an unsorted network. The largest chains of connected comments tends to be focused around the center.">?</span>
 		<button id="btn3-2">Boom goes the dynamite!</button><span class="help btn3-2" title="Sort the comments linearly by date, while still being able to see how comments reference each other.">?</span>
 		<button id="btn3-3">Round round get around</button><span class="help btn3-3" title="Sort the comments circularly by date (radius being the date), while still being able to see how comments reference each other.">?</span>
-		
-		<button id="btn3-seq">Sequence</button><span class="help btn3-seq" title="Play as sequence. Gives an 8-second replay of the comments as they are posted in the discussion.">?</span>
-		
 	
 		<div class='chart' id='chart-1'></div>
 	
@@ -861,7 +889,29 @@
 		<div class="chart" id="presentation"></div>
 	
 		<h2><a name="explanation" href="#explanation">#</a>Explanation</h2>
-		<p>...</p>
+		
+		<aside>
+			<blockquote>
+				<p>I go to a website and read an article. Man, that was really great. I’d like to comment and ask the author a question. I scroll down… 384 comments. Ugh. Screw this.</p>
+				<cite><a href="http://jasonsantamaria.com/articles/cultivating-conversations/">Jason Santa Maria</a></cite>
+			</blockquote>
+		</aside>
+
+		<p>This is first and formost me trying to familiarise myself with the <a href="http://d3js.org">D3.js – <em>Data-Driven Documents</em></a> library. Its learning by doing, and learning by playing around with some real-world data. I am trying to master more visualisation tools and gain practical experience within <a href="http://en.wikipedia.org/wiki/Graph_theory">Graph Theory</a>.</p>
+
+		<p>It is however also an (prematurely) early attempt at providing a quick overview of large online discussions (often 100+ comments long, and spread over multiple pages). A long time ago, I read <a href="http://jasonsantamaria.com/articles/cultivating-conversations/">Jason Santa Maria's <strong>Cultivating Conversation</strong></a> article, about how long discussions overwhelm users and create repetition. This of course depreciates the value of the conversation and discourages users from further adding to it. Needless to say the problem (and possible solutions) intrigued me. And at infrequent intervals my thoughts have return to the issue. Only now has it become something more than skittish and spooky ideas. What I present here is not a solution to the problem describe by Jason as such. It does not automatically create 10-20 <dfn title="Summarizes important parts of the conversation. In the same way a TV show can catch you up on the story with a 30 second recap.">milemakers</dfn> for every 200 comments. Neatly summarising the entire conversation and lowering the barrier of entry. But it might provide hints as were to start.</p>
+		
+		<aside>
+			<blockquote>
+				<p>When that author’s comments are highlighted, they form a natural series of milemarkers in the discussion; chances are if something important happened, the author came back to address it. ... What if we could take the idea of highlighting author comments a step further and set real milemarkers in comment threads?</p>
+				<cite><a href="http://jasonsantamaria.com/articles/cultivating-conversations/">Jason Santa Maria</a></cite>
+			</blockquote>
+		</aside>
+
+		<p>How would you go about automating these milemakers? Keep in mind that the less ambitious proposal is an editor manually creating them. But even for an editor a 100+ discussion is a feat to quickly summarise. Where to start? What to include? What not to include? etc. By structuring the conversation around the referrals made by users (e.g. mentioning or replying to other users) I believe the problem can be greatly reduced, to something more manageable. Irrespectively of whether you favour the editorial or automated approach. The threads of the conversation are exposed. And one could start by summarising the major threads of the discussion – they take up a lot of "space", but most often treat and discuss only a single theme. Eliminating these (or having summarise them), one could then continue to smaller and smaller threads.</p>
+
+		<p>As you can read this is all still very vague and speculative. Including other metrics, weighting connections and trying out various algorithms, as well as text analysis, would be a natural next step. However the presence of actual data, in a visualised an understandable format, will hopefully make it all more earth-bound.</p>
+		
 		<!-- <p>How to pronounce; <em>E&middot;dac&middot;sac</em></p> -->
 	
 		<h2><a name="inspiration" href="#inspiration">#</a>Inspiration</h2>
